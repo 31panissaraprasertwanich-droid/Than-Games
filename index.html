@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ทีมกู้ภัยจิ๋วตะลุยเมือง 3D - Tiny Rescue Squad 3D</title>
+    <title>Tiny Rescue Squad 3D: Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Mali:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -21,8 +21,8 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #38bdf8;
-            font-family: 'Fredoka', 'Mali', cursive, sans-serif;
+            background-color: #0f172a;
+            font-family: 'Fredoka', sans-serif;
         }
         #game-container {
             position: relative;
@@ -34,21 +34,35 @@
             width: 100%;
             height: 100%;
         }
-        /* ปุ่มกดสไตล์ของเล่น 3D นูนเด้ง */
-        .toy-btn {
-            transition: transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.1s;
-            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.28), 0 10px 18px rgba(0, 0, 0, 0.25);
+        /* Glassmorphism โปร่งแสง ไม่บังฉาก 3D */
+        .glass-hud {
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
         }
-        .toy-btn:active, .toy-btn.pressed {
-            transform: translateY(5px) scale(0.95);
-            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.28), 0 4px 8px rgba(0, 0, 0, 0.2);
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.08s ease, background-color 0.15s ease, border-color 0.15s ease;
         }
-        @keyframes pulseGlow {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
+        .glass-btn:active, .glass-btn.active {
+            transform: scale(0.91);
+            background: rgba(255, 255, 255, 0.42);
+            border-color: #fde047;
         }
-        .animate-pulse-glow {
-            animation: pulseGlow 1.3s infinite ease-in-out;
+        .action-ready {
+            border-color: #fde047 !important;
+            background: rgba(234, 179, 8, 0.45) !important;
+            animation: pulseAction 1.1s infinite ease-in-out;
+        }
+        @keyframes pulseAction {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 12px rgba(250, 204, 21, 0.5); }
+            50% { transform: scale(1.08); box-shadow: 0 0 24px rgba(250, 204, 21, 0.9); }
         }
         @keyframes tiltPhone {
             0%, 100% { transform: rotate(0deg); }
@@ -69,109 +83,112 @@
 </head>
 <body>
 
-    <!-- แจ้งเตือนหมุนจอแนวนอนสำหรับมือถือ -->
-    <div id="rotate-warning" class="fixed inset-0 z-50 bg-sky-500 flex-col items-center justify-center text-white p-6 text-center">
-        <div class="w-24 h-40 border-8 border-white rounded-3xl flex items-center justify-center mb-6 animate-tilt shadow-xl bg-sky-400">
-            <div class="w-3 h-3 bg-white rounded-full mt-28"></div>
+    <!-- แจ้งเตือนหมุนจอแนวนอนเมื่อเปิดแนวตั้งบนมือถือ -->
+    <div id="rotate-warning" class="fixed inset-0 z-50 bg-slate-900/95 flex-col items-center justify-center text-white p-6 text-center">
+        <div class="w-20 h-36 border-4 border-sky-400 rounded-2xl flex items-center justify-center mb-5 animate-tilt">
+            <div class="w-2.5 h-2.5 bg-sky-400 rounded-full mt-24"></div>
         </div>
-        <div class="text-4xl font-bold drop-shadow-md">หมุนจอแนวนอนนะจ๊ะ!</div>
-        <div class="text-6xl mt-4">📱➡️🔄</div>
+        <div class="text-2xl font-bold tracking-wide">Landscape Mode</div>
+        <div class="text-4xl mt-3">📱🔄</div>
     </div>
 
     <div id="game-container">
-        <!-- พื้นที่แสดงผล 3D Three.js -->
-        <div id="three-canvas-wrapper" class="w-full h-full"></div>
+        <!-- พื้นที่เรนเดอร์ 3D เต็มจอ 100% -->
+        <div id="three-wrapper" class="w-full h-full"></div>
 
-        <!-- UI ด้านบน (HUD) -->
-        <div class="pointer-events-none fixed top-0 left-0 right-0 p-3 sm:p-4 flex items-start justify-between z-20">
+        <!-- TOP HUD: กะทัดรัด ชิดขอบบน -->
+        <div class="pointer-events-none fixed top-0 left-0 right-0 p-2.5 sm:p-3.5 flex items-start justify-between z-20">
             
-            <!-- ซ้ายบน: ปุ่มตั้งค่า (Parental Gate กดค้าง 3 วิ) + ปุ่มเปลี่ยนมุมกล้อง -->
-            <div class="flex items-center gap-3 pointer-events-auto">
-                <button id="btn-settings" class="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/90 border-4 border-slate-300 flex items-center justify-center text-3xl shadow-lg active:scale-95">
-                    ⚙️
-                    <!-- วงแหวนโหลดเมื่อกดค้าง 3 วินาที -->
-                    <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
-                        <circle id="settings-ring" cx="32" cy="32" r="28" fill="none" stroke="#ef4444" stroke-width="6" stroke-dasharray="176" stroke-dashoffset="176" stroke-linecap="round"/>
-                    </svg>
-                </button>
+            <!-- ซ้ายบน: ปุ่มเมนูพับเก็บได้ (☰) + เกจสถานะขนาดเล็ก (น้ำมัน / น้ำหรือหิน) -->
+            <div class="flex flex-col gap-2 pointer-events-auto">
+                <div class="flex items-center gap-2">
+                    <button id="btn-menu-toggle" class="glass-btn w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-white text-2xl">
+                        ☰
+                    </button>
 
-                <button id="btn-camera" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-sky-400 border-4 border-white flex items-center justify-center text-3xl text-white">
+                    <!-- เกจสถานะแบบโปร่งแสงขนาดเล็ก -->
+                    <div class="glass-hud rounded-2xl px-2.5 py-1.5 flex items-center gap-3">
+                        <!-- เกจน้ำมัน -->
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm sm:text-base">⛽</span>
+                            <div class="w-14 sm:w-20 h-2.5 bg-slate-900/60 rounded-full overflow-hidden border border-white/20">
+                                <div id="bar-fuel" class="h-full bg-amber-400 transition-all duration-150" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                        <!-- เกจน้ำ / สัมภาระ -->
+                        <div class="flex items-center gap-1.5">
+                            <span id="icon-resource" class="text-sm sm:text-base">💧</span>
+                            <div class="w-14 sm:w-20 h-2.5 bg-slate-900/60 rounded-full overflow-hidden border border-white/20">
+                                <div id="bar-resource" class="h-full bg-sky-400 transition-all duration-150" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ลิ้นชักเมนู (ซ่อนอยู่ กด ☰ เพื่อเปิด/ปิด) -->
+                <div id="menu-drawer" class="hidden glass-hud rounded-2xl p-2 flex flex-col gap-2 w-max">
+                    <div class="flex items-center gap-1.5">
+                        <button data-veh="fire" class="veh-select-btn glass-btn w-11 h-11 rounded-xl flex items-center justify-center text-2xl border-yellow-300 bg-red-500/40">🚒</button>
+                        <button data-veh="digger" class="veh-select-btn glass-btn w-11 h-11 rounded-xl flex items-center justify-center text-2xl">🚜</button>
+                        <button data-veh="police" class="veh-select-btn glass-btn w-11 h-11 rounded-xl flex items-center justify-center text-2xl">🚓</button>
+                    </div>
+                    <div class="flex items-center gap-1.5 border-t border-white/15 pt-1.5">
+                        <button id="btn-daynight" class="glass-btn flex-1 h-10 rounded-xl flex items-center justify-center text-xl">☀️</button>
+                        <button id="btn-sound" class="glass-btn flex-1 h-10 rounded-xl flex items-center justify-center text-xl">🔊</button>
+                        <button id="btn-warp" class="glass-btn flex-1 h-10 rounded-xl flex items-center justify-center text-xl">🧭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กลางบน: แถบความคืบหน้าภารกิจ (แสดงเฉพาะตอนทำภารกิจ) -->
+            <div id="objective-hud" class="hidden glass-hud rounded-full px-3.5 py-1.5 flex items-center gap-2.5">
+                <span id="obj-icon" class="text-xl">🔥</span>
+                <div class="w-24 sm:w-36 h-2.5 bg-slate-900/60 rounded-full overflow-hidden border border-white/20">
+                    <div id="obj-bar" class="h-full bg-emerald-400 transition-all duration-150" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- ขวาบน: เรดาร์เข็มทิศขนาดเล็ก + ปุ่มสลับมุมมองกล้อง + ดาวสะสม -->
+            <div class="flex items-center gap-2 pointer-events-auto">
+                <div class="glass-hud rounded-full px-2.5 py-1 flex items-center gap-1 text-white font-bold text-sm sm:text-base">
+                    <span>⭐</span>
+                    <span id="score-val">0</span>
+                </div>
+
+                <!-- มินิเรดาร์บอกทิศภารกิจ -->
+                <div class="glass-hud w-11 h-11 sm:w-12 sm:h-12 rounded-full relative flex items-center justify-center">
+                    <div id="radar-arrow" class="text-amber-300 text-lg font-bold transition-transform duration-75">▲</div>
+                    <span id="radar-target-icon" class="absolute -bottom-1 -right-1 text-xs">🔥</span>
+                </div>
+
+                <!-- ปุ่มสลับมุมมองกล้อง (Chase Cam / Hood Cam) -->
+                <button id="btn-cam" class="glass-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white text-xl">
                     🎥
                 </button>
             </div>
-
-            <!-- กลางบน: แถบเลือกรถทั้ง 3 คัน เปลี่ยนได้ตลอดเวลา -->
-            <div class="flex items-center gap-2 sm:gap-4 bg-white/85 backdrop-blur-sm px-3 py-2 rounded-full border-4 border-white shadow-xl pointer-events-auto">
-                <button id="select-fire" data-vehicle="fire" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 border-4 border-yellow-300 flex items-center justify-center text-3xl sm:text-4xl scale-110">
-                    🚒
-                </button>
-                <button id="select-digger" data-vehicle="digger" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-yellow-400 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl opacity-80">
-                    🚜
-                </button>
-                <button id="select-police" data-vehicle="police" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl opacity-80">
-                    🚓
-                </button>
-            </div>
-
-            <!-- ขวาบน: นับดาว + ปุ่มเข็มทิศภารกิจ + ปุ่มเปลี่ยนหมวกแต่งรถ -->
-            <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
-                <!-- ปุ่มแต่งหมวกรถ 3D -->
-                <button id="btn-hat" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-purple-500 border-4 border-white flex items-center justify-center text-3xl text-white relative">
-                    👑
-                    <span id="hat-badge" class="absolute -bottom-1 -right-1 bg-yellow-400 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
-                </button>
-
-                <!-- ปุ่มเข็มทิศนำทางไปจุดภารกิจ -->
-                <button id="btn-mission-warp" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-400 border-4 border-white flex items-center justify-center text-3xl animate-pulse-glow">
-                    🧭
-                </button>
-
-                <!-- ตัวนับดาวสีทอง -->
-                <div class="flex items-center gap-2 bg-white/95 border-4 border-yellow-400 rounded-full px-4 py-2 shadow-lg">
-                    <span class="text-2xl sm:text-3xl">⭐</span>
-                    <span id="star-count" class="text-2xl sm:text-3xl font-bold text-amber-700">0</span>
-                </div>
-            </div>
         </div>
 
-        <!-- ไอคอนแจ้งเตือนภารกิจตรงกลางบน (ปรากฏเมื่ออยู่ใกล้จุดภารกิจหรือกำลังทำภารกิจ) -->
-        <div id="mission-banner" class="hidden pointer-events-none fixed top-24 left-1/2 -translate-x-1/2 z-20 bg-white/95 border-4 border-amber-400 rounded-full px-6 py-2 shadow-xl flex items-center gap-3">
-            <span id="mission-icon" class="text-4xl">🔥</span>
-            <div class="w-36 sm:w-48 h-5 bg-slate-200 rounded-full overflow-hidden border-2 border-slate-400">
-                <div id="mission-progress-bar" class="h-full bg-emerald-500 transition-all duration-150" style="width: 0%;"></div>
-            </div>
+        <!-- BOTTOM-LEFT: Virtual Analog Joystick โปร่งแสง -->
+        <div id="joystick-zone" class="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 w-32 h-32 sm:w-36 sm:h-36 rounded-full glass-hud z-20 flex items-center justify-center">
+            <div id="joystick-knob" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/35 border-2 border-white/70 shadow-lg pointer-events-none transition-transform duration-75"></div>
         </div>
 
-        <!-- UI ด้านล่าง: ปุ่มควบคุมสำหรับเด็ก 4 ขวบ (ใหญ่ ชัด กดง่าย) -->
-        <div class="pointer-events-none fixed bottom-0 left-0 right-0 p-4 sm:p-6 flex items-end justify-between z-20">
-            
-            <!-- ซ้ายล่าง: ปุ่มเลี้ยวซ้าย - เลี้ยวขวา ขนาดใหญ่ -->
-            <div class="flex items-center gap-3 sm:gap-5 pointer-events-auto">
-                <button id="btn-left" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-sky-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
-                    ⬅️
-                </button>
-                <button id="btn-right" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-sky-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
-                    ➡️
-                </button>
-            </div>
+        <!-- BOTTOM-RIGHT: ปุ่มควบคุมโปร่งแสง 3 ปุ่มหลัก + ปุ่มแตร/ไซเรนขนาดเล็กด้านบน -->
+        <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex flex-col items-end gap-2.5">
+            <!-- แถวบน: ปุ่มแตร/ไซเรนขนาดกะทัดรัด -->
+            <button id="btn-siren" class="glass-btn w-12 h-12 rounded-full flex items-center justify-center text-xl text-white mr-1">
+                🚨
+            </button>
 
-            <!-- กลางล่าง: ปุ่มแอ็กชันพิเศษ (ฉีดน้ำ / ตักหิน / ไซเรนหาแมว / เทอร์โบ) -->
-            <div class="flex items-center gap-3 sm:gap-4 pointer-events-auto">
-                <button id="btn-horn" class="toy-btn w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-500 border-4 border-white flex items-center justify-center text-4xl sm:text-5xl">
-                    📯
-                </button>
-
-                <button id="btn-action" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-rose-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow">
+            <!-- แถวล่าง: 3 ปุ่มหลัก (Action อัจฉริยะ, เบรก/ถอยหลัง, คันเร่ง) -->
+            <div class="flex items-end gap-2.5 sm:gap-3.5">
+                <button id="btn-action" class="glass-btn w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center text-3xl text-white">
                     💦
                 </button>
-            </div>
-
-            <!-- ขวาล่าง: ปุ่มถอยหลัง (เล็กกว่า) + ปุ่มคันเร่งสีเขียวขนาดใหญ่ยักษ์ -->
-            <div class="flex items-end gap-3 sm:gap-4 pointer-events-auto">
-                <button id="btn-reverse" class="toy-btn w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-500 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl">
+                <button id="btn-brake" class="glass-btn w-15 h-15 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-2xl text-white">
                     ⬇️
                 </button>
-                <button id="btn-gas" class="toy-btn w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
+                <button id="btn-gas" class="glass-btn w-20 h-20 sm:w-22 sm:h-22 rounded-full flex items-center justify-center text-4xl text-white bg-emerald-500/30 border-emerald-300/70">
                     ⬆️
                 </button>
             </div>
@@ -180,14 +197,19 @@
 
     <script>
         /**
-         * 1. ระบบเสียงสังเคราะห์ Web Audio API (ทำงานได้ทันทีโดยไม่ต้องใช้ไฟล์เสียงภายนอก)
+         * ============================================================================
+         * 1. REALISTIC WEB AUDIO SYNTHESIZER (เสียงเครื่องยนต์, เบรก, ไซเรน, น้ำ, ไฮดรอลิก)
+         * ============================================================================
          */
-        class SoundSystem {
+        class ProAudio {
             constructor() {
                 this.ctx = null;
+                this.muted = false;
                 this.engineOsc = null;
+                this.engineSub = null;
                 this.engineGain = null;
-                this.hornPitchShift = 1.0;
+                this.sirenActive = false;
+                this.sirenInterval = null;
             }
 
             init() {
@@ -195,1498 +217,1663 @@
                     const AudioCtx = window.AudioContext || window.webkitAudioContext;
                     this.ctx = new AudioCtx();
                 }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                if (this.muted && this.engineGain) {
+                    this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
                 }
+                return this.muted;
             }
 
-            playTap() {
-                this.init();
+            updateEngine(speedRatio, isBraking) {
+                if (this.muted || !this.ctx) return;
+                if (!this.engineOsc) {
+                    this.engineOsc = this.ctx.createOscillator();
+                    this.engineSub = this.ctx.createOscillator();
+                    this.engineGain = this.ctx.createGain();
+                    const filter = this.ctx.createBiquadFilter();
+
+                    this.engineOsc.type = 'sawtooth';
+                    this.engineSub.type = 'triangle';
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 180;
+
+                    this.engineOsc.connect(filter);
+                    this.engineSub.connect(filter);
+                    filter.connect(this.engineGain);
+                    this.engineGain.connect(this.ctx.destination);
+
+                    this.engineOsc.start();
+                    this.engineSub.start();
+                }
+
                 const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(520, now);
-                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
-                gain.gain.setValueAtTime(0.25, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.08);
+                const baseFreq = 44 + speedRatio * 68;
+                this.engineOsc.frequency.setTargetAtTime(baseFreq, now, 0.06);
+                this.engineSub.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.06);
+                const vol = 0.03 + speedRatio * 0.06;
+                this.engineGain.gain.setTargetAtTime(vol, now, 0.06);
             }
 
-            playHorn(vehicleType) {
+            playHorn(type) {
+                if (this.muted) return;
                 this.init();
                 const now = this.ctx.currentTime;
-                const p = this.hornPitchShift;
-                if (vehicleType === 'fire') {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(620 * p, now);
-                    osc.frequency.linearRampToValueAtTime(840 * p, now + 0.25);
-                    osc.frequency.linearRampToValueAtTime(580 * p, now + 0.5);
-                    gain.gain.setValueAtTime(0.25, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.55);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.55);
-                } else if (vehicleType === 'digger') {
-                    [0, 0.2].forEach(offset => {
+                if (type === 'fire') {
+                    // Air Horn รถดับเพลิง
+                    [185, 233].forEach(freq => {
                         const osc = this.ctx.createOscillator();
                         const gain = this.ctx.createGain();
                         osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(210 * p, now + offset);
-                        gain.gain.setValueAtTime(0.18, now + offset);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.16);
+                        osc.frequency.setValueAtTime(freq, now);
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
                         osc.connect(gain);
                         gain.connect(this.ctx.destination);
-                        osc.start(now + offset);
-                        osc.stop(now + offset + 0.16);
+                        osc.start(now);
+                        osc.stop(now + 0.45);
                     });
-                } else {
-                    [0, 0.16].forEach((offset, i) => {
+                } else if (type === 'digger') {
+                    // แตรรถก่อสร้างทุ้มต่ำ
+                    [0, 0.22].forEach(off => {
                         const osc = this.ctx.createOscillator();
                         const gain = this.ctx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime((i === 0 ? 880 : 1180) * p, now + offset);
-                        gain.gain.setValueAtTime(0.22, now + offset);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.14);
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(155, now + off);
+                        gain.gain.setValueAtTime(0.1, now + off);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + off + 0.16);
                         osc.connect(gain);
                         gain.connect(this.ctx.destination);
-                        osc.start(now + offset);
-                        osc.stop(now + offset + 0.14);
+                        osc.start(now + off);
+                        osc.stop(now + off + 0.16);
+                    });
+                } else {
+                    // แตรตำรวจสั้นๆ
+                    [0, 0.14].forEach((off, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(i === 0 ? 520 : 660, now + off);
+                        gain.gain.setValueAtTime(0.16, now + off);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + off + 0.12);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + off);
+                        osc.stop(now + off + 0.12);
                     });
                 }
             }
 
-            playStar() {
-                this.init();
+            playSirenPulse(type) {
+                if (this.muted || !this.ctx) return;
                 const now = this.ctx.currentTime;
-                [880, 1174.66, 1318.51].forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.05);
-                    gain.gain.setValueAtTime(0.2, now + i * 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.25);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + i * 0.05);
-                    osc.stop(now + i * 0.05 + 0.25);
-                });
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                if (type === 'police') {
+                    osc.frequency.setValueAtTime(780, now);
+                    osc.frequency.linearRampToValueAtTime(1120, now + 0.22);
+                    osc.frequency.linearRampToValueAtTime(780, now + 0.44);
+                } else {
+                    osc.frequency.setValueAtTime(560, now);
+                    osc.frequency.linearRampToValueAtTime(740, now + 0.25);
+                    osc.frequency.linearRampToValueAtTime(560, now + 0.5);
+                }
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.linearRampToValueAtTime(0.005, now + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.5);
             }
 
-            playWater() {
+            playWaterSpray() {
+                if (this.muted) return;
                 this.init();
-                const bufferSize = this.ctx.sampleRate * 0.14;
-                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-                const noise = this.ctx.createBufferSource();
-                noise.buffer = buffer;
+                const len = this.ctx.sampleRate * 0.12;
+                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+                const src = this.ctx.createBufferSource();
+                src.buffer = buf;
 
                 const filter = this.ctx.createBiquadFilter();
                 filter.type = 'bandpass';
-                filter.frequency.value = 1150;
+                filter.frequency.value = 1400;
 
                 const gain = this.ctx.createGain();
-                gain.gain.setValueAtTime(0.16, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.14);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
 
-                noise.connect(filter);
+                src.connect(filter);
                 filter.connect(gain);
                 gain.connect(this.ctx.destination);
-                noise.start();
+                src.start();
             }
 
-            playScoop() {
+            playHydraulic() {
+                if (this.muted) return;
                 this.init();
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now);
-                osc.frequency.exponentialRampToValueAtTime(320, now + 0.18);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, now);
+                osc.frequency.linearRampToValueAtTime(195, now + 0.28);
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(now);
-                osc.stop(now + 0.2);
+                osc.stop(now + 0.3);
             }
 
-            playMeow() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(620, now);
-                osc.frequency.exponentialRampToValueAtTime(980, now + 0.15);
-                osc.frequency.exponentialRampToValueAtTime(540, now + 0.45);
-                gain.gain.setValueAtTime(0.28, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.45);
-            }
-
-            playJump() {
+            playRefill() {
+                if (this.muted) return;
                 this.init();
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(240, now);
-                osc.frequency.exponentialRampToValueAtTime(640, now + 0.22);
-                gain.gain.setValueAtTime(0.22, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                osc.frequency.setValueAtTime(420, now);
+                osc.frequency.exponentialRampToValueAtTime(760, now + 0.14);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(now);
-                osc.stop(now + 0.22);
+                osc.stop(now + 0.14);
             }
 
-            playBubble() {
+            playSuccess() {
+                if (this.muted) return;
                 this.init();
                 const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                const f = 450 + Math.random() * 450;
-                osc.frequency.setValueAtTime(f, now);
-                osc.frequency.exponentialRampToValueAtTime(f * 1.5, now + 0.08);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.08);
-            }
-
-            playCelebration() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
-                const times = [0, 0.11, 0.22, 0.34, 0.48, 0.62];
-                notes.forEach((freq, i) => {
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, now + times[i]);
-                    gain.gain.setValueAtTime(0.24, now + times[i]);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + times[i] + 0.25);
+                    osc.frequency.setValueAtTime(f, now + idx * 0.09);
+                    gain.gain.setValueAtTime(0.18, now + idx * 0.09);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.09 + 0.25);
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
-                    osc.start(now + times[i]);
-                    osc.stop(now + times[i] + 0.25);
+                    osc.start(now + idx * 0.09);
+                    osc.stop(now + idx * 0.09 + 0.25);
                 });
-            }
-
-            updateEngine(speedRatio) {
-                if (!this.ctx) return;
-                if (speedRatio > 0.05) {
-                    if (!this.engineOsc) {
-                        this.engineOsc = this.ctx.createOscillator();
-                        this.engineGain = this.ctx.createGain();
-                        this.engineOsc.type = 'sawtooth';
-                        const filter = this.ctx.createBiquadFilter();
-                        filter.type = 'lowpass';
-                        filter.frequency.value = 220;
-                        this.engineOsc.connect(filter);
-                        filter.connect(this.engineGain);
-                        this.engineGain.connect(this.ctx.destination);
-                        this.engineOsc.start();
-                    }
-                    this.engineOsc.frequency.setTargetAtTime(52 + speedRatio * 48, this.ctx.currentTime, 0.05);
-                    this.engineGain.gain.setTargetAtTime(0.065 * speedRatio, this.ctx.currentTime, 0.05);
-                } else if (this.engineGain) {
-                    this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-                }
             }
         }
 
-        const sfx = new SoundSystem();
+        const audio = new ProAudio();
 
         /**
-         * 2. ตั้งค่าฉาก Three.js 3D, แสงเงา และกล้อง
+         * ============================================================================
+         * 2. THREE.JS SCENE, LIGHTING, DAY/NIGHT & PROCEDURAL TEXTURES
+         * ============================================================================
          */
-        const container = document.getElementById('three-canvas-wrapper');
+        const wrapper = document.getElementById('three-wrapper');
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x7dd3fc);
-        scene.fog = new THREE.FogExp2(0xbae6fd, 0.0045);
+        const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.2, 480);
 
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.05;
+        wrapper.appendChild(renderer.domElement);
 
-        // แสงสว่างสดใสสไตล์การ์ตูน
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x4ade80, 0.85);
-        hemiLight.position.set(0, 80, 0);
+        // ระบบแสงกลางวัน / กลางคืน
+        let isNight = false;
+        const skyDayColor = new THREE.Color(0x60a5fa);
+        const skyNightColor = new THREE.Color(0x090d16);
+        scene.background = skyDayColor.clone();
+        scene.fog = new THREE.FogExp2(0x93c5fd, 0.0038);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.85);
         scene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
-        dirLight.position.set(55, 95, 45);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 10;
-        dirLight.shadow.camera.far = 250;
-        const d = 110;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
-        scene.add(dirLight);
+        const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
+        sunLight.position.set(80, 130, 60);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 20;
+        sunLight.shadow.camera.far = 320;
+        const shadowD = 145;
+        sunLight.shadow.camera.left = -shadowD;
+        sunLight.shadow.camera.right = shadowD;
+        sunLight.shadow.camera.top = shadowD;
+        sunLight.shadow.camera.bottom = -shadowD;
+        sunLight.shadow.bias = -0.0005;
+        scene.add(sunLight);
+
+        // สร้าง Procedural Asphalt Texture สมจริง
+        function createAsphaltTexture() {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 256;
+            const g = c.getContext('2d');
+            g.fillStyle = '#334155';
+            g.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 4000; i++) {
+                const v = 40 + Math.random() * 25;
+                g.fillStyle = `rgb(${v},${v + 5},${v + 12})`;
+                g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(24, 24);
+            return tex;
+        }
+        const asphaltTex = createAsphaltTexture();
 
         /**
-         * 3. สร้างโลก 3D (เมืองการ์ตูน, ถนน, เนินกระโดด, ลานล้างรถ, ต้นไม้, บ่อน้ำ)
+         * ============================================================================
+         * 3. BUILD REALISTIC CITY: ROADS, RIVER, BRIDGE, GAS STATION, HYDRANTS, BUILDINGS
+         * ============================================================================
          */
-        const worldGroup = new THREE.Group();
-        scene.add(worldGroup);
+        const world = new THREE.Group();
+        scene.add(world);
 
-        // พื้นหญ้าสีเขียวสดใส
-        const groundGeo = new THREE.PlaneGeometry(360, 360);
-        const groundMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 });
-        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-        groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.receiveShadow = true;
-        worldGroup.add(groundMesh);
+        // พื้นดินหญ้าและทางเท้า
+        const terrain = new THREE.Mesh(
+            new THREE.PlaneGeometry(460, 460),
+            new THREE.MeshStandardMaterial({ color: 0x3f8f4e, roughness: 0.9 })
+        );
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.receiveShadow = true;
+        world.add(terrain);
 
-        // รั้วขอบเมืองรอบนอกกันรถตกโลก
-        function buildBoundaryFences() {
-            const fenceMat = new THREE.MeshLambertMaterial({ color: 0xfef3c7 });
-            const postMat = new THREE.MeshLambertMaterial({ color: 0xf97316 });
-            const limit = 125;
-            for (let i = -limit; i <= limit; i += 10) {
-                [
-                    [i, -limit, 0],
-                    [i, limit, 0],
-                    [-limit, i, Math.PI / 2],
-                    [limit, i, Math.PI / 2]
-                ].forEach(([x, z, rotY]) => {
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.5, 1.2), postMat);
-                    post.position.set(x, 1.75, z);
-                    post.castShadow = true;
-                    worldGroup.add(post);
+        // แม่น้ำไหลผ่านฝั่งตะวันออก (X = 85) พร้อมสะพานข้าม
+        const riverMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(26, 460),
+            new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2, metalness: 0.5 })
+        );
+        riverMesh.rotation.x = -Math.PI / 2;
+        riverMesh.position.set(85, 0.03, 0);
+        world.add(riverMesh);
 
-                    const rail = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 0.5), fenceMat);
-                    rail.position.set(x, 2.2, z);
-                    rail.rotation.y = rotY;
-                    worldGroup.add(rail);
-                });
-            }
-        }
-        buildBoundaryFences();
+        // เครือข่ายถนน 3x3 + ถนนข้ามสะพานไปเขตก่อสร้าง (X = 125)
+        const roadMat = new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.85 });
+        const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+        const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
-        // สร้างเครือข่ายถนน 3D (สี่แยก + วงเวียนกลางเมือง)
-        function buildRoads() {
-            const roadMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
-            const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+        const roadGrid = [-60, 0, 60];
+        roadGrid.forEach(coord => {
+            // ถนนแกน X (ยาวถึง X = 140 ข้ามสะพาน)
+            const swX = new THREE.Mesh(new THREE.BoxGeometry(275, 0.16, 18), sidewalkMat);
+            swX.position.set(25, 0.08, coord);
+            swX.receiveShadow = true;
+            world.add(swX);
 
-            // ถนนแนวแกน X และ Z ตัดกันเป็นตารางเมือง
-            const roadCoords = [-55, 0, 55];
-            roadCoords.forEach(pos => {
-                // ถนนแนวนอน
-                const roadX = new THREE.Mesh(new THREE.PlaneGeometry(230, 14), roadMat);
-                roadX.rotation.x = -Math.PI / 2;
-                roadX.position.set(0, 0.04, pos);
-                roadX.receiveShadow = true;
-                worldGroup.add(roadX);
+            const rX = new THREE.Mesh(new THREE.PlaneGeometry(275, 14), roadMat);
+            rX.rotation.x = -Math.PI / 2;
+            rX.position.set(25, 0.17, coord);
+            rX.receiveShadow = true;
+            world.add(rX);
 
-                // ถนนแนวตั้ง
-                const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(14, 230), roadMat);
-                roadZ.rotation.x = -Math.PI / 2;
-                roadZ.position.set(pos, 0.04, 0);
-                roadZ.receiveShadow = true;
-                worldGroup.add(roadZ);
+            // เส้นแบ่งเลนสีเหลืองคู่ตรงกลาง
+            const yl = new THREE.Mesh(new THREE.PlaneGeometry(270, 0.35), yellowLineMat);
+            yl.rotation.x = -Math.PI / 2;
+            yl.position.set(25, 0.18, coord);
+            world.add(yl);
 
-                // เส้นประสีขาว
-                for (let step = -105; step <= 105; step += 12) {
-                    const dashX = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.5), lineMat);
-                    dashX.rotation.x = -Math.PI / 2;
-                    dashX.position.set(step, 0.06, pos);
-                    worldGroup.add(dashX);
+            // ถนนแกน Z
+            const swZ = new THREE.Mesh(new THREE.BoxGeometry(18, 0.16, 210), sidewalkMat);
+            swZ.position.set(coord, 0.08, 0);
+            swZ.receiveShadow = true;
+            world.add(swZ);
 
-                    const dashZ = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 5), lineMat);
-                    dashZ.rotation.x = -Math.PI / 2;
-                    dashZ.position.set(pos, 0.06, step);
-                    worldGroup.add(dashZ);
-                }
-            });
+            const rZ = new THREE.Mesh(new THREE.PlaneGeometry(14, 210), roadMat);
+            rZ.rotation.x = -Math.PI / 2;
+            rZ.position.set(coord, 0.17, 0);
+            rZ.receiveShadow = true;
+            world.add(rZ);
 
-            // วงเวียนดอกไม้ตรงกลางเมือง (0, 0)
-            const island = new THREE.Mesh(new THREE.CylinderGeometry(8, 8.5, 0.6, 24), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
-            island.position.set(0, 0.3, 0);
-            island.receiveShadow = true;
-            worldGroup.add(island);
-
-            const fountain = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, 1.4, 20), new THREE.MeshLambertMaterial({ color: 0x38bdf8 }));
-            fountain.position.set(0, 0.9, 0);
-            worldGroup.add(fountain);
-        }
-        buildRoads();
-
-        // สร้างเนินกระโดด 3D (Jump Ramps) ให้เด็กขับเหินเวหาสนุกๆ
-        const ramps = [
-            { x: 0, z: -28, rotY: 0 },
-            { x: 28, z: 55, rotY: Math.PI / 2 },
-            { x: -55, z: 28, rotY: 0 }
-        ];
-        ramps.forEach(r => {
-            const rampGroup = new THREE.Group();
-            rampGroup.position.set(r.x, 0, r.z);
-            rampGroup.rotation.y = r.rotY;
-
-            const rampGeo = new THREE.BoxGeometry(10, 2.2, 12);
-            const rampMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
-            const rampMesh = new THREE.Mesh(rampGeo, rampMat);
-            rampMesh.position.set(0, 0.6, 0);
-            rampMesh.rotation.x = -0.18;
-            rampMesh.castShadow = true;
-            rampMesh.receiveShadow = true;
-            rampGroup.add(rampMesh);
-
-            // แถบลูกศรสีแดงบนเนิน
-            const stripe = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 2), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            stripe.position.set(0, 1.75, 0);
-            stripe.rotation.x = -0.18;
-            rampGroup.add(stripe);
-
-            worldGroup.add(rampGroup);
+            const ylz = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 205), yellowLineMat);
+            ylz.rotation.x = -Math.PI / 2;
+            ylz.position.set(coord, 0.18, 0);
+            world.add(ylz);
         });
 
-        // สร้างซุ้มล้างรถฟองสบู่ 3D (Car Wash Arch) ที่พิกัด (-28, 0)
-        const washStationPos = new THREE.Vector3(-28, 0, 0);
-        const washBrushes = [];
-        function buildCarWash() {
-            const washGroup = new THREE.Group();
-            washGroup.position.copy(washStationPos);
-
-            const pillarMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
-            const archMat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
-
-            [-5.5, 5.5].forEach(px => {
-                const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 9, 6), pillarMat);
-                pillar.position.set(px, 4.5, 0);
-                pillar.castShadow = true;
-                washGroup.add(pillar);
-            });
-
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 7), archMat);
-            roof.position.set(0, 9.5, 0);
-            roof.castShadow = true;
-            washGroup.add(roof);
-
-            // แปรงล้างรถหมุนได้สีชมพูและเหลือง
-            [-3.8, 3.8].forEach((bx, i) => {
-                const brush = new THREE.Mesh(
-                    new THREE.CylinderGeometry(1.3, 1.3, 6.5, 16),
-                    new THREE.MeshLambertMaterial({ color: i === 0 ? 0xf472b6 : 0xfacc15 })
+        // ราวสะพานข้ามแม่น้ำ 3 จุด (Z = -60, 0, 60 ที่ X = 85)
+        roadGrid.forEach(zPos => {
+            [-7.5, 7.5].forEach(zOff => {
+                const rail = new THREE.Mesh(
+                    new THREE.BoxGeometry(28, 1.4, 0.6),
+                    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.4 })
                 );
-                brush.position.set(bx, 4, 0);
-                washGroup.add(brush);
-                washBrushes.push(brush);
+                rail.position.set(85, 0.85, zPos + zOff);
+                rail.castShadow = true;
+                world.add(rail);
             });
+        });
 
-            // แผ่นพื้นเรืองแสงสีฟ้า
-            const pad = new THREE.Mesh(
-                new THREE.PlaneGeometry(11, 12),
-                new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.6 })
+        // เก็บรายการวัตถุเรืองแสงตอนกลางคืน (หน้าต่างตึก + ไฟถนน)
+        const nightWindowMats = [];
+        const streetLampBulbs = [];
+        const buildingColliders = [];
+
+        function createStreetLamp(x, z, rotY = 0) {
+            const g = new THREE.Group();
+            g.position.set(x, 0.16, z);
+            g.rotation.y = rotY;
+
+            const pole = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.16, 0.22, 8.5, 8),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 })
             );
-            pad.rotation.x = -Math.PI / 2;
-            pad.position.y = 0.08;
-            washGroup.add(pad);
+            pole.position.y = 4.25;
+            pole.castShadow = true;
+            g.add(pole);
 
-            worldGroup.add(washGroup);
-        }
-        buildCarWash();
-
-        // สร้างตึกบ้านเรือน ต้นไม้ และสิ่งกีดขวางชนกระเด็นได้ (กรวยจราจร / ลูกบอลยักษ์)
-        const colliders = []; // กล่องชนของตึก
-        const knockableProps = []; // กรวยจราจรและบอลชายหาดที่ชนกระเด็นได้
-
-        function createCartoonTree(x, z) {
-            const tree = new THREE.Group();
-            tree.position.set(x, 0, z);
-
-            const trunk = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.7, 1.0, 4, 10),
-                new THREE.MeshLambertMaterial({ color: 0x92400e })
+            const arm = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.18, 2.4),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b })
             );
-            trunk.position.y = 2;
-            trunk.castShadow = true;
-            tree.add(trunk);
+            arm.position.set(0, 8.4, 1.0);
+            g.add(arm);
 
-            const foliageMat = new THREE.MeshLambertMaterial({ color: 0x16a34a });
-            const top1 = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2, 1), foliageMat);
-            top1.position.y = 5.5;
-            top1.castShadow = true;
-            tree.add(top1);
+            const bulbMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
+            const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.9), bulbMat);
+            bulb.position.set(0, 8.28, 1.8);
+            g.add(bulb);
+            streetLampBulbs.push(bulbMat);
 
-            const top2 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.3, 1), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
-            top2.position.set(1.2, 7.2, 0.8);
-            tree.add(top2);
-
-            worldGroup.add(tree);
-            colliders.push({ x, z, r: 2.2 });
+            world.add(g);
         }
 
-        function createBuilding(x, z, w, h, d, colorHex) {
-            const bGroup = new THREE.Group();
-            bGroup.position.set(x, 0, z);
+        // สร้างตึกสูงสไตล์โมเดิร์นพร้อมหน้าต่างเรืองแสงตอนกลางคืน
+        function createCityBuilding(x, z, w, h, d, wallColor) {
+            const g = new THREE.Group();
+            g.position.set(x, 0, z);
 
             const body = new THREE.Mesh(
                 new THREE.BoxGeometry(w, h, d),
-                new THREE.MeshLambertMaterial({ color: colorHex })
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.7 })
             );
             body.position.y = h / 2;
             body.castShadow = true;
             body.receiveShadow = true;
-            bGroup.add(body);
+            g.add(body);
 
-            // หลังคาสีสด
-            const roof = new THREE.Mesh(
-                new THREE.ConeGeometry(Math.max(w, d) * 0.72, 4.5, 4),
-                new THREE.MeshLambertMaterial({ color: 0xef4444 })
+            // ขอบดาดฟ้า
+            const roofTrim = new THREE.Mesh(
+                new THREE.BoxGeometry(w + 0.6, 0.8, d + 0.6),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b })
             );
-            roof.position.y = h + 2.25;
-            roof.rotation.y = Math.PI / 4;
-            roof.castShadow = true;
-            bGroup.add(roof);
+            roofTrim.position.y = h + 0.4;
+            g.add(roofTrim);
 
-            // หน้าต่างสีเหลืองอบอุ่น
-            const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-            const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, h * 0.35, d + 0.3), winMat);
-            win.position.y = h * 0.55;
-            bGroup.add(win);
-
-            worldGroup.add(bGroup);
-            colliders.push({ x, z, r: Math.max(w, d) * 0.55 });
-        }
-
-        // จัดวางตึกและต้นไม้รอบเมือง (เว้นพื้นที่ทำภารกิจ 3 จุด)
-        const townBuildings = [
-            [-28, -28, 12, 14, 12, 0xfb923c],
-            [28, -28, 13, 16, 11, 0x38bdf8],
-            [-28, 28, 12, 12, 12, 0xa78bfa],
-            [28, 28, 14, 15, 12, 0xf472b6],
-            [-82, -28, 14, 18, 14, 0xfacc15],
-            [82, -28, 14, 14, 14, 0x4ade80],
-            [-82, 28, 14, 16, 14, 0xf87171],
-            [82, 28, 14, 15, 14, 0x60a5fa]
-        ];
-        townBuildings.forEach(b => createBuilding(...b));
-
-        // ต้นไม้ในสวนสาธารณะและริมทาง
-        [
-            [-18, -82], [0, -85], [18, -82],
-            [-85, -82], [-85, 82], [85, -82], [85, 82],
-            [-16, 16], [16, -16], [16, 16]
-        ].forEach(([tx, tz]) => createCartoonTree(tx, tz));
-
-        // สร้างกรวยจราจรและลูกบอลเด้งดึ๋งให้เด็กชนเล่นสนุกๆ
-        function spawnFunProps() {
-            const coneMat = new THREE.MeshLambertMaterial({ color: 0xf97316 });
-            const ballColors = [0xef4444, 0x3b82f6, 0xfacc15, 0xec4899];
-
-            for (let i = 0; i < 16; i++) {
-                const isBall = i % 2 === 0;
-                const mesh = isBall
-                    ? new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshLambertMaterial({ color: ballColors[i % 4] }))
-                    : new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.6, 12), coneMat);
-
-                const angle = (i / 16) * Math.PI * 2;
-                const dist = 22 + (i % 3) * 28;
-                mesh.position.set(Math.cos(angle) * dist, isBall ? 1.5 : 1.3, Math.sin(angle) * dist);
-                mesh.castShadow = true;
-                worldGroup.add(mesh);
-
-                knockableProps.push({
-                    mesh,
-                    vx: 0,
-                    vy: 0,
-                    vz: 0,
-                    baseY: isBall ? 1.5 : 1.3,
-                    isBall
-                });
+            // แถบกระจกหน้าต่าง
+            const winMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            nightWindowMats.push(winMat);
+            const floors = Math.floor(h / 4.2);
+            for (let f = 1; f < floors; f++) {
+                const winBand = new THREE.Mesh(new THREE.BoxGeometry(w + 0.15, 1.4, d + 0.15), winMat);
+                winBand.position.y = f * 4.2;
+                g.add(winBand);
             }
-        }
-        spawnFunProps();
 
-        // สร้างดาวสีทองหมุนได้ 20 ดวงทั่วเมือง (เกิดใหม่ได้เรื่อยๆ)
-        const goldStars = [];
-        function createGoldStarMesh() {
-            const group = new THREE.Group();
-            const mat = new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.35 });
-            const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7, 0), mat);
-            core.scale.set(1, 1, 0.45);
-            group.add(core);
-            return group;
+            world.add(g);
+            buildingColliders.push({ x, z, hw: w / 2 + 1.8, hd: d / 2 + 1.8 });
         }
 
-        for (let i = 0; i < 20; i++) {
-            const starMesh = createGoldStarMesh();
-            const angle = (i / 20) * Math.PI * 2;
-            const radius = 16 + (i % 4) * 22;
-            starMesh.position.set(Math.cos(angle) * radius, 2.2, Math.sin(angle) * radius);
-            worldGroup.add(starMesh);
-            goldStars.push({ mesh: starMesh, active: true, respawnTimer: 0 });
+        // จัดวางตึกในบล็อกเมือง (เว้นจุดทำภารกิจและปั๊มน้ำมัน)
+        const cityLayout = [
+            [-30, -30, 22, 26, 22, 0x64748b],
+            [30, -30, 24, 34, 22, 0x475569],
+            [-30, 30, 22, 22, 22, 0x94a3b8],
+            [-90, -30, 24, 30, 22, 0x64748b],
+            [-90, 30, 22, 20, 22, 0x78716c],
+            [-30, -90, 24, 28, 20, 0x475569],
+            [30, -90, 22, 32, 20, 0x64748b],
+            [-30, 90, 24, 24, 20, 0x94a3b8],
+            [30, 90, 22, 28, 20, 0x475569]
+        ];
+        cityLayout.forEach(b => createCityBuilding(...b));
+
+        // วางเสาไฟตามสี่แยก
+        roadGrid.forEach(rx => {
+            roadGrid.forEach(rz => {
+                createStreetLamp(rx - 8.2, rz - 8.2, Math.PI / 4);
+                createStreetLamp(rx + 8.2, rz + 8.2, -Math.PI * 0.75);
+            });
+        });
+
+        // ปั๊มน้ำมัน (Gas Station) ที่พิกัด (30, 0, 30)
+        const gasStationPos = new THREE.Vector3(30, 0, 22);
+        function buildGasStation() {
+            const g = new THREE.Group();
+            g.position.set(30, 0.16, 32);
+
+            // หลังคาปั๊มสีแดง-ขาว
+            const canopy = new THREE.Mesh(
+                new THREE.BoxGeometry(18, 1.4, 12),
+                new THREE.MeshStandardMaterial({ color: 0xef4444 })
+            );
+            canopy.position.y = 7.5;
+            canopy.castShadow = true;
+            g.add(canopy);
+
+            const trim = new THREE.Mesh(
+                new THREE.BoxGeometry(18.4, 0.5, 12.4),
+                new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+            );
+            trim.position.y = 6.8;
+            g.add(trim);
+
+            [-6, 6].forEach(px => {
+                const col = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.45, 0.45, 7.5, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xf8fafc })
+                );
+                col.position.set(px, 3.75, 0);
+                g.add(col);
+
+                // หัวจ่ายน้ำมัน
+                const pump = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.4, 2.6, 1.0),
+                    new THREE.MeshStandardMaterial({ color: 0xf59e0b })
+                );
+                pump.position.set(px, 1.3, 0);
+                g.add(pump);
+            });
+
+            // โซนจอดเติมน้ำมันเรืองแสง
+            const pad = new THREE.Mesh(
+                new THREE.PlaneGeometry(16, 6),
+                new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.35 })
+            );
+            pad.rotation.x = -Math.PI / 2;
+            pad.position.set(0, 0.05, -10);
+            g.add(pad);
+
+            world.add(g);
         }
+        buildGasStation();
+
+        // หัวจ่ายน้ำดับเพลิง (Fire Hydrants) ริมฟุตบาท 4 จุดสำหรับเติมน้ำรถดับเพลิง
+        const hydrants = [
+            new THREE.Vector3(-10, 0, -51),
+            new THREE.Vector3(50, 0, -10),
+            new THREE.Vector3(-50, 0, 51),
+            new THREE.Vector3(10, 0, 51)
+        ];
+        hydrants.forEach(hPos => {
+            const hg = new THREE.Group();
+            hg.position.set(hPos.x, 0.16, hPos.z);
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.45, 0.55, 1.6, 12),
+                new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 })
+            );
+            body.position.y = 0.8;
+            body.castShadow = true;
+            const cap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.48, 12, 12),
+                new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+            );
+            cap.position.y = 1.6;
+            hg.add(body, cap);
+            world.add(hg);
+        });
 
         /**
-         * 4. สร้างโมเดลรถกู้ภัย 3D ทั้ง 3 คัน + หมวกแต่งรถ 3D
+         * ============================================================================
+         * 4. BUILD REALISTIC PLAYER VEHICLES (FIRE TRUCK, LOADER, POLICE INTERCEPTOR)
+         * ============================================================================
          */
-        const vehicleContainer = new THREE.Group();
-        scene.add(vehicleContainer);
+        const playerRoot = new THREE.Group();
+        scene.add(playerRoot);
 
-        const vehicleMeshes = {};
-        const wheelList = [];
-        const sirenMeshes = [];
-        let diggerArmGroup = null;
-        let waterNozzlePos = new THREE.Vector3(0, 3.2, 3.5);
+        // ตัวถังหลักที่เอียงได้เวลาเลี้ยวโค้ง (Body Roll)
+        const chassisTiltGroup = new THREE.Group();
+        playerRoot.add(chassisTiltGroup);
 
-        function addCartoonEyesToVehicle(parent, x, y, z) {
-            const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+        const vehicleModels = {};
+        const frontWheels = [];
+        const allWheels = [];
+        const brakeLightMeshes = [];
+        const sirenLights = [];
+        let loaderBucketPivot = null;
+        let cargoRocksInBed = [];
 
-            [-0.75, 0.75].forEach(ex => {
-                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), eyeWhiteMat);
-                eye.scale.set(0.9, 1.15, 0.5);
-                eye.position.set(x + ex, y, z);
-                parent.add(eye);
+        // ไฟหน้า SpotLight ส่องพื้นถนนจริงตอนกลางคืน
+        const headLightL = new THREE.SpotLight(0xfffbeb, 0, 48, Math.PI / 5, 0.4, 1);
+        headLightL.position.set(-1.1, 1.6, 3.2);
+        const headTargetL = new THREE.Object3D();
+        headTargetL.position.set(-1.1, 0.2, 16);
+        playerRoot.add(headLightL, headTargetL);
+        headLightL.target = headTargetL;
 
-                const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), pupilMat);
-                pupil.position.set(x + ex, y, z + 0.16);
-                parent.add(pupil);
-            });
-        }
+        const headLightR = new THREE.SpotLight(0xfffbeb, 0, 48, Math.PI / 5, 0.4, 1);
+        headLightR.position.set(1.1, 1.6, 3.2);
+        const headTargetR = new THREE.Object3D();
+        headTargetR.position.set(1.1, 0.2, 16);
+        playerRoot.add(headLightR, headTargetR);
+        headLightR.target = headTargetR;
 
-        function createWheel3D(x, y, z) {
-            const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(x, y, z);
+        // ไฟไซเรน PointLight สะท้อนพื้นถนน
+        const sirenPointLight = new THREE.PointLight(0xef4444, 0, 18);
+        sirenPointLight.position.set(0, 4.2, 0);
+        playerRoot.add(sirenPointLight);
 
+        function createRealisticWheel(x, y, z, radius, width, isFront) {
+            const steerPivot = new THREE.Group();
+            steerPivot.position.set(x, y, z);
+
+            const spinGroup = new THREE.Group();
             const tire = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.15, 1.15, 0.85, 20),
-                new THREE.MeshLambertMaterial({ color: 0x1e293b })
+                new THREE.CylinderGeometry(radius, radius, width, 24),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 })
             );
             tire.rotation.z = Math.PI / 2;
             tire.castShadow = true;
-            wheelGroup.add(tire);
+            spinGroup.add(tire);
 
-            const hub = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.6, 0.6, 0.9, 14),
-                new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+            const rim = new THREE.Mesh(
+                new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, width + 0.04, 16),
+                new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.3 })
             );
-            hub.rotation.z = Math.PI / 2;
-            wheelGroup.add(hub);
+            rim.rotation.z = Math.PI / 2;
+            spinGroup.add(rim);
 
-            wheelList.push(wheelGroup);
-            return wheelGroup;
+            // น็อตล้อเพื่อให้เห็นการหมุนชัดเจน
+            const lug = new THREE.Mesh(
+                new THREE.BoxGeometry(width + 0.08, radius * 0.8, 0.2),
+                new THREE.MeshStandardMaterial({ color: 0x475569 })
+            );
+            spinGroup.add(lug);
+
+            steerPivot.add(spinGroup);
+            allWheels.push(spinGroup);
+            if (isFront) frontWheels.push(steerPivot);
+            return steerPivot;
         }
 
-        // 4.1 รถดับเพลิง 3D (Fire Truck)
-        function buildFireTruck3D() {
-            const g = new THREE.Group();
-            const redMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
-            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
-
-            // ตัวรถ
-            const body = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.5, 6.8), redMat);
-            body.position.set(0, 2.1, 0);
-            body.castShadow = true;
-            g.add(body);
-
-            // แถบขาวคาดข้าง
-            const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.45, 6.9), whiteMat);
-            stripe.position.set(0, 1.8, 0);
-            g.add(stripe);
-
-            // กระจกหน้า & ตาการ์ตูน
-            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.2, 0.3), glassMat);
-            windshield.position.set(0, 2.6, 3.35);
-            g.add(windshield);
-            addCartoonEyesToVehicle(g, 0, 2.65, 3.45);
-
-            // บันไดสีเงินบนหลังคา
-            const ladder = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 4.6), new THREE.MeshLambertMaterial({ color: 0xcbd5e1 }));
-            ladder.position.set(0, 3.55, -0.6);
-            g.add(ladder);
-
-            // ปืนฉีดน้ำบนหลังคา
-            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.4, 12), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
-            cannon.rotation.x = Math.PI / 3;
-            cannon.position.set(0, 3.8, 1.6);
-            g.add(cannon);
-
-            // ไฟไซเรน
-            const siren = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 0.6), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-            siren.position.set(0, 3.6, 2.6);
-            g.add(siren);
-            sirenMeshes.push({ mesh: siren, type: 'fire' });
-
-            // ล้อ 4 ล้อ
-            [[-1.7, 1.15, 2.1], [1.7, 1.15, 2.1], [-1.7, 1.15, -2.1], [1.7, 1.15, -2.1]].forEach(p => g.add(createWheel3D(...p)));
-
-            return g;
+        function addBrakeLights(parent, xOffset, y, z) {
+            [-xOffset, xOffset].forEach(x => {
+                const mat = new THREE.MeshBasicMaterial({ color: 0x7f1d1d });
+                const light = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.12), mat);
+                light.position.set(x, y, z);
+                parent.add(light);
+                brakeLightMeshes.push(mat);
+            });
         }
 
-        // 4.2 รถตักดิน 3D (Excavator)
-        function buildDigger3D() {
+        // 4.1 Heavy Fire Truck (รถดับเพลิง)
+        function createFireTruck() {
             const g = new THREE.Group();
-            const yellowMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
-            const darkMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
-            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+            const redMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.35, metalness: 0.2 });
+            const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+            const chromeMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.2 });
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
 
-            // ฐานรถ
-            const base = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.5, 5.4), yellowMat);
-            base.position.set(0, 1.6, -0.3);
-            base.castShadow = true;
-            g.add(base);
+            // ตัวถังหลัก
+            const rearBody = new THREE.Mesh(new THREE.BoxGeometry(3.1, 2.3, 4.8), redMat);
+            rearBody.position.set(0, 2.0, -1.0);
+            rearBody.castShadow = true;
+            g.add(rearBody);
 
-            // ห้องคนขับ
-            const cab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.1, 2.8), yellowMat);
-            cab.position.set(0, 3.2, -0.6);
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.4, 2.3), redMat);
+            cab.position.set(0, 2.05, 2.6);
             cab.castShadow = true;
             g.add(cab);
 
-            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.3), glassMat);
-            windshield.position.set(0, 3.3, 0.75);
+            // แถบขาวคาดข้าง
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.16, 0.35, 7.1), whiteMat);
+            stripe.position.set(0, 1.5, 0.1);
+            g.add(stripe);
+
+            // กระจกหน้า & กระจกข้าง
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.1, 0.15), glassMat);
+            windshield.position.set(0, 2.45, 3.72);
             g.add(windshield);
-            addCartoonEyesToVehicle(g, 0, 3.35, 0.85);
 
-            // แขนตักด้านหน้าขยับได้!
-            diggerArmGroup = new THREE.Group();
-            diggerArmGroup.position.set(0, 2.0, 1.8);
+            // บันไดกู้ภัยบนหลังคา
+            const ladder = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 5.2), chromeMat);
+            ladder.position.set(0, 3.3, -0.8);
+            g.add(ladder);
 
-            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 3.0), yellowMat);
-            armL.position.set(-1.3, 0.2, 1.3);
-            diggerArmGroup.add(armL);
+            // ปืนฉีดน้ำแรงดันสูงบนหลังคา
+            const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.2, 12), chromeMat);
+            turret.rotation.x = Math.PI / 3;
+            turret.position.set(0, 3.55, 1.8);
+            g.add(turret);
 
-            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 3.0), yellowMat);
-            armR.position.set(1.3, 0.2, 1.3);
-            diggerArmGroup.add(armR);
+            // แถบไฟไซเรนบนหลังคา
+            const sirenRed = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            sirenRed.position.set(-0.55, 3.4, 2.8);
+            const sirenBlue = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.4), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+            sirenBlue.position.set(0.55, 3.4, 2.8);
+            g.add(sirenRed, sirenBlue);
+            sirenLights.push({ red: sirenRed.material, blue: sirenBlue.material });
 
-            // บุ้งกี๋ตักดินขนาดใหญ่
-            const bucket = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.4, 1.6), darkMat);
-            bucket.position.set(0, 0.1, 2.9);
-            bucket.rotation.x = 0.25;
-            bucket.castShadow = true;
-            diggerArmGroup.add(bucket);
-
-            g.add(diggerArmGroup);
-
-            // ไฟไซเรนสีส้ม
-            const siren = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.6, 12), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
-            siren.position.set(0, 4.5, -0.6);
-            g.add(siren);
-            sirenMeshes.push({ mesh: siren, type: 'digger' });
-
-            [[-1.7, 1.15, 1.6], [1.7, 1.15, 1.6], [-1.7, 1.15, -1.8], [1.7, 1.15, -1.8]].forEach(p => g.add(createWheel3D(...p)));
+            addBrakeLights(g, 1.1, 1.3, -3.42);
             return g;
         }
 
-        // 4.3 รถตำรวจ 3D (Police Car)
-        function buildPoliceCar3D() {
+        // 4.2 Heavy Construction Loader / Excavator (รถตักดิน)
+        function createConstructionLoader() {
             const g = new THREE.Group();
-            const blueMat = new THREE.MeshLambertMaterial({ color: 0x2563eb });
-            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+            const catYellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.45, metalness: 0.2 });
+            const darkSteel = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.6 });
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.85 });
 
-            // ตัวรถส่วนล่างสีน้ำเงิน
-            const body = new THREE.Mesh(new THREE.BoxGeometry(3.3, 1.5, 6.2), blueMat);
-            body.position.set(0, 1.6, 0);
-            body.castShadow = true;
-            g.add(body);
+            // ตัวถังหลัก + กระบะบรรทุกหินด้านหลัง
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.2, 6.4), darkSteel);
+            chassis.position.set(0, 1.3, 0);
+            chassis.castShadow = true;
+            g.add(chassis);
+
+            // กระบะบรรทุกหินด้านหลัง
+            const bedFloor = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.25, 3.0), catYellow);
+            bedFloor.position.set(0, 1.95, -1.7);
+            g.add(bedFloor);
+
+            [-1.4, 1.4].forEach(wx => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.1, 3.0), catYellow);
+                wall.position.set(wx, 2.5, -1.7);
+                g.add(wall);
+            });
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.1, 0.22), catYellow);
+            backWall.position.set(0, 2.5, -3.1);
+            g.add(backWall);
+
+            // ก้อนหินในกระบะ (แสดงเมื่อตักหินขึ้นมาแล้ว)
+            cargoRocksInBed = [];
+            [[-0.6, 2.3, -1.4], [0.6, 2.3, -1.6], [0, 2.5, -2.3]].forEach(([rx, ry, rz]) => {
+                const rMesh = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.65, 0),
+                    new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 })
+                );
+                rMesh.position.set(rx, ry, rz);
+                rMesh.visible = false;
+                g.add(rMesh);
+                cargoRocksInBed.push(rMesh);
+            });
+
+            // ห้องคนขับ
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.0, 2.2), catYellow);
+            cab.position.set(0, 2.8, 0.8);
+            cab.castShadow = true;
+            g.add(cab);
+
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.2, 2.26), glassMat);
+            glass.position.set(0, 3.0, 0.8);
+            g.add(glass);
+
+            // แขนไฮดรอลิกและบุ้งกี๋ตักดินด้านหน้า
+            loaderBucketPivot = new THREE.Group();
+            loaderBucketPivot.position.set(0, 1.8, 2.0);
+
+            [-1.25, 1.25].forEach(ax => {
+                const arm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.38, 2.4), catYellow);
+                arm.position.set(ax, 0, 1.1);
+                loaderBucketPivot.add(arm);
+            });
+
+            const bucket = new THREE.Mesh(new THREE.BoxGeometry(3.3, 1.15, 1.3), darkSteel);
+            bucket.position.set(0, -0.1, 2.4);
+            bucket.rotation.x = 0.25;
+            bucket.castShadow = true;
+            loaderBucketPivot.add(bucket);
+            g.add(loaderBucketPivot);
+
+            // ไฟไซเรนสีส้ม
+            const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.4, 12), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
+            beacon.position.set(0, 4.0, 0.8);
+            g.add(beacon);
+            sirenLights.push({ red: beacon.material, blue: beacon.material });
+
+            addBrakeLights(g, 1.1, 1.3, -3.22);
+            return g;
+        }
+
+        // 4.3 Police Interceptor (รถตำรวจไล่ล่าความเร็วสูง)
+        function createPoliceInterceptor() {
+            const g = new THREE.Group();
+            const blackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.6 });
+            const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.3 });
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.1, metalness: 0.9 });
+
+            // ตัวถังทรงสปอร์ตเพรียวลม
+            const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.15, 6.4), blackMat);
+            lowerBody.position.set(0, 1.25, 0);
+            lowerBody.castShadow = true;
+            g.add(lowerBody);
 
             // ประตูสีขาว
-            const door = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.35, 2.8), whiteMat);
-            door.position.set(0, 1.6, 0);
-            g.add(door);
+            const doors = new THREE.Mesh(new THREE.BoxGeometry(3.06, 1.05, 2.6), whiteMat);
+            doors.position.set(0, 1.25, -0.1);
+            g.add(doors);
 
             // หลังคาสีขาว
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.3, 3.2), whiteMat);
-            cabin.position.set(0, 2.9, -0.2);
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.95, 2.9), whiteMat);
+            cabin.position.set(0, 2.25, -0.3);
             cabin.castShadow = true;
             g.add(cabin);
 
-            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.95, 0.3), glassMat);
-            windshield.position.set(0, 2.9, 1.35);
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.85, 3.0), glassMat);
+            windshield.position.set(0, 2.25, -0.3);
             g.add(windshield);
-            addCartoonEyesToVehicle(g, 0, 2.95, 1.45);
 
-            // แถบไฟไซเรน แดง-น้ำเงิน
-            const siren = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.45, 0.55), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            siren.position.set(0, 3.75, -0.2);
-            g.add(siren);
-            sirenMeshes.push({ mesh: siren, type: 'police' });
+            // สปอยเลอร์หลัง
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 0.55), blackMat);
+            wing.position.set(0, 2.05, -2.9);
+            g.add(wing);
 
-            [[-1.65, 1.15, 1.9], [1.65, 1.15, 1.9], [-1.65, 1.15, -1.9], [1.65, 1.15, -1.9]].forEach(p => g.add(createWheel3D(...p)));
+            // แถบไฟไซเรน LED แดง-น้ำเงิน
+            const lightBarR = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.35), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            lightBarR.position.set(-0.5, 2.82, -0.3);
+            const lightBarB = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.35), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+            lightBarB.position.set(0.5, 2.82, -0.3);
+            g.add(lightBarR, lightBarB);
+            sirenLights.push({ red: lightBarR.material, blue: lightBarB.material });
+
+            addBrakeLights(g, 1.05, 1.35, -3.22);
             return g;
         }
 
-        vehicleMeshes.fire = buildFireTruck3D();
-        vehicleMeshes.digger = buildDigger3D();
-        vehicleMeshes.police = buildPoliceCar3D();
+        vehicleModels.fire = createFireTruck();
+        vehicleModels.digger = createConstructionLoader();
+        vehicleModels.police = createPoliceInterceptor();
 
-        vehicleContainer.add(vehicleMeshes.fire);
-        vehicleContainer.add(vehicleMeshes.digger);
-        vehicleContainer.add(vehicleMeshes.police);
+        chassisTiltGroup.add(vehicleModels.fire);
+        chassisTiltGroup.add(vehicleModels.digger);
+        chassisTiltGroup.add(vehicleModels.police);
 
-        // 4.4 หมวกแต่งรถ 3D บนหลังคา (ปลดล็อกและสลับได้ด้วยปุ่มมงกุฎ!)
-        const hatGroup = new THREE.Group();
-        hatGroup.position.set(0, 4.1, 0);
-        vehicleContainer.add(hatGroup);
-
-        const hats = [];
-        // หมวก 0: ไม่มีหมวก
-        hats.push(new THREE.Group());
-
-        // หมวก 1: มงกุฎราชาสีทอง
-        const crown = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.1, 0.85, 1.1, 8),
-            new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.3 })
-        );
-        hats.push(crown);
-
-        // หมวก 2: ใบพัดเฮลิคอปเตอร์หมุนติ้ว
-        const propGroup = new THREE.Group();
-        const propCap = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 12), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
-        const propBlade = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.15, 0.45), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
-        propBlade.position.y = 0.75;
-        propGroup.add(propCap, propBlade);
-        hats.push(propGroup);
-
-        // หมวก 3: แผงหลังไดโนเสาร์สุดเท่
-        const dinoGroup = new THREE.Group();
-        [-1.2, 0, 1.2].forEach(dz => {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.3, 4), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
-            spike.position.set(0, 0.2, dz);
-            dinoGroup.add(spike);
-        });
-        hats.push(dinoGroup);
-
-        hats.forEach((h, i) => {
-            h.visible = (i === 0);
-            hatGroup.add(h);
-        });
-        let currentHatIndex = 0;
+        // ล้อทั้ง 4 (ล้อหน้าเลี้ยวซ้าย-ขวาได้)
+        [
+            [-1.55, 0.85, 2.1, 0.85, 0.65, true],
+            [1.55, 0.85, 2.1, 0.85, 0.65, true],
+            [-1.55, 0.85, -2.1, 0.85, 0.65, false],
+            [1.55, 0.85, -2.1, 0.85, 0.65, false]
+        ].forEach(cfg => playerRoot.add(createRealisticWheel(...cfg)));
 
         /**
-         * 5. สร้างภารกิจ 3D ทั้ง 3 จุดในเมือง + ลูกศรนำทาง 3D เหนือรถ
+         * ============================================================================
+         * 5. LIVING CITY AI TRAFFIC & MULTI-STEP MISSIONS
+         * ============================================================================
          */
-        const missionZones = {
-            fire: { pos: new THREE.Vector3(55, 0, -55), hp: 100, maxHp: 100, active: true },
-            digger: { pos: new THREE.Vector3(-55, 0, 55), rocksLeft: 4, active: true },
-            police: { pos: new THREE.Vector3(55, 0, 55), spotsLeft: 3, active: true }
-        };
+        // รถจราจร AI วิ่งตามถนนในเมือง
+        const trafficCars = [];
+        const trafficColors = [0x38bdf8, 0xfbbf24, 0xa855f7, 0x10b981, 0xf43f5e, 0xe2e8f0];
 
-        // วงแหวนแสงสีทองบอกจุดทำภารกิจบนพื้น
-        const beaconMeshes = {};
-        Object.keys(missionZones).forEach(key => {
-            const ring = new THREE.Mesh(
-                new THREE.RingGeometry(6.5, 8.5, 32),
-                new THREE.MeshBasicMaterial({
-                    color: key === 'fire' ? 0xef4444 : (key === 'digger' ? 0xfacc15 : 0x3b82f6),
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.85
-                })
-            );
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.set(missionZones[key].pos.x, 0.12, missionZones[key].pos.z);
-            worldGroup.add(ring);
-            beaconMeshes[key] = ring;
-        });
+        function spawnTrafficCars() {
+            const routes = [
+                { axis: 'x', lane: -56.5, dir: 1 },
+                { axis: 'x', lane: 3.5, dir: -1 },
+                { axis: 'z', lane: -3.5, dir: 1 },
+                { axis: 'z', lane: 56.5, dir: -1 }
+            ];
+            routes.forEach((r, idx) => {
+                for (let k = 0; k < 2; k++) {
+                    const carG = new THREE.Group();
+                    const col = trafficColors[(idx * 2 + k) % trafficColors.length];
+                    const body = new THREE.Mesh(
+                        new THREE.BoxGeometry(2.4, 1.1, 4.6),
+                        new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.3 })
+                    );
+                    body.position.y = 0.9;
+                    body.castShadow = true;
+                    carG.add(body);
 
-        // 5.1 ฉากภารกิจไฟไหม้ 3D (55, 0, -55)
-        const fireFlames3D = [];
-        const burningHouse = new THREE.Group();
-        burningHouse.position.set(55, 0, -68);
-        const bHouseBody = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 10), new THREE.MeshLambertMaterial({ color: 0xfb923c }));
-        bHouseBody.position.y = 7;
-        bHouseBody.castShadow = true;
-        burningHouse.add(bHouseBody);
-        const bHouseRoof = new THREE.Mesh(new THREE.ConeGeometry(11, 5, 4), new THREE.MeshLambertMaterial({ color: 0xb91c1c }));
-        bHouseRoof.position.y = 16.5;
-        bHouseRoof.rotation.y = Math.PI / 4;
-        burningHouse.add(bHouseRoof);
-        worldGroup.add(burningHouse);
+                    const top = new THREE.Mesh(
+                        new THREE.BoxGeometry(2.0, 0.8, 2.4),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                    );
+                    top.position.y = 1.8;
+                    carG.add(top);
 
-        // เปลวไฟ 3D 5 กองหน้าบ้าน
-        for (let i = 0; i < 5; i++) {
-            const flame = new THREE.Mesh(
-                new THREE.ConeGeometry(1.5, 3.8, 8),
-                new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xef4444 : 0xfacc15 })
-            );
-            flame.position.set(50 + i * 2.5, 3 + (i % 2) * 3.5, -62.5);
-            worldGroup.add(flame);
-            fireFlames3D.push(flame);
+                    const offset = -70 + k * 110;
+                    if (r.axis === 'x') {
+                        carG.position.set(offset, 0.17, r.lane);
+                        carG.rotation.y = r.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+                    } else {
+                        carG.position.set(r.lane, 0.17, offset);
+                        carG.rotation.y = r.dir > 0 ? 0 : Math.PI;
+                    }
+
+                    world.add(carG);
+                    trafficCars.push({ mesh: carG, axis: r.axis, dir: r.dir, speed: 0.22 + Math.random() * 0.1 });
+                }
+            });
         }
+        spawnTrafficCars();
 
-        // 5.2 ฉากภารกิจก้อนหินถล่ม 3D (-55, 0, 55)
-        const boulders3D = [];
-        const rockMat = new THREE.MeshLambertMaterial({ color: 0x78716c });
-        [
-            [-58, 2.2, 55],
-            [-52, 2.0, 55],
-            [-55, 4.5, 55],
-            [-55, 2.1, 59]
-        ].forEach(([rx, ry, rz]) => {
-            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.3, 0), rockMat);
-            rock.position.set(rx, ry, rz);
-            rock.castShadow = true;
-            worldGroup.add(rock);
-            boulders3D.push({ mesh: rock, basePos: new THREE.Vector3(rx, ry, rz), cleared: false, flyVy: 0 });
-        });
-
-        // 5.3 ฉากภารกิจรถตำรวจตามหาลูกแมว 3D รอบสวน (55, 0, 55)
-        const hidingSpots3D = [];
-        const kittenGroup = new THREE.Group();
-        const catHead = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 14), new THREE.MeshLambertMaterial({ color: 0xfde047 }));
-        catHead.position.y = 1.2;
-        const earL = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 4), new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
-        earL.position.set(-0.6, 2.1, 0);
-        const earR = earL.clone();
-        earR.position.x = 0.6;
-        kittenGroup.add(catHead, earL, earR);
-        kittenGroup.visible = false;
-        worldGroup.add(kittenGroup);
-
-        [
-            [45, 48, 0x22c55e], // พุ่มไม้ 1
-            [65, 52, 0xd97706], // กล่องลัง 2
-            [52, 66, 0x16a34a]  // พุ่มไม้ 3
-        ].forEach(([hx, hz, col], idx) => {
-            const spotMesh = new THREE.Mesh(
-                idx === 1 ? new THREE.BoxGeometry(3.2, 3.2, 3.2) : new THREE.DodecahedronGeometry(2.4, 1),
-                new THREE.MeshLambertMaterial({ color: col })
+        // 5.1 ภารกิจรถดับเพลิง: ตึกเกิดเหตุเพลิงไหม้ที่ (-90, 0, -90)
+        const fireMissionPos = new THREE.Vector3(-82, 0, -68);
+        const fireFlames = [];
+        function buildBurningBuilding() {
+            const b = new THREE.Group();
+            b.position.set(-90, 0, -88);
+            const main = new THREE.Mesh(
+                new THREE.BoxGeometry(22, 24, 20),
+                new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.8 })
             );
-            spotMesh.position.set(hx, 1.8, hz);
-            spotMesh.castShadow = true;
-            worldGroup.add(spotMesh);
-            hidingSpots3D.push({ mesh: spotMesh, pos: new THREE.Vector3(hx, 1.8, hz), found: false, hasCat: idx === 2 });
-        });
+            main.position.y = 12;
+            main.castShadow = true;
+            b.add(main);
+            world.add(b);
+            buildingColliders.push({ x: -90, z: -88, hw: 12.5, hd: 11.5 });
 
-        // ลูกศรนำทาง 3D ลอยเหนือรถชี้ไปยังภารกิจของรถคันที่เลือก
-        const guideArrowGroup = new THREE.Group();
-        const arrowShaft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 1.8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
-        const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.4, 4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-        arrowHead.rotation.x = Math.PI / 2;
-        arrowHead.position.z = 1.4;
-        guideArrowGroup.add(arrowShaft, arrowHead);
-        guideArrowGroup.position.set(0, 6.2, 0);
-        vehicleContainer.add(guideArrowGroup);
-
-        /**
-         * 6. ระบบอนุภาค 3D (น้ำฉีดดับไฟ, ฟองสบู่ล้างรถ, พลุกระดาษฉลอง)
-         */
-        const particles3D = [];
-        function spawnParticle3D(pos, vel, colorHex, size = 0.45, life = 40) {
-            const pMesh = new THREE.Mesh(
-                new THREE.SphereGeometry(size, 8, 8),
-                new THREE.MeshBasicMaterial({ color: colorHex })
-            );
-            pMesh.position.copy(pos);
-            worldGroup.add(pMesh);
-            particles3D.push({ mesh: pMesh, vel, life, maxLife: life });
-        }
-
-        function spawnConfettiBurst(centerPos) {
-            const colors = [0xef4444, 0xfacc15, 0x3b82f6, 0x22c55e, 0xec4899, 0xa855f7];
-            for (let i = 0; i < 45; i++) {
-                const vel = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.9,
-                    0.4 + Math.random() * 0.8,
-                    (Math.random() - 0.5) * 0.9
+            // กองไฟ 5 จุดหน้าอาคาร
+            for (let i = 0; i < 5; i++) {
+                const flame = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.8, 4.5, 8),
+                    new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xef4444 : 0xfacc15 })
                 );
-                spawnParticle3D(
-                    centerPos.clone().add(new THREE.Vector3(0, 3, 0)),
-                    vel,
-                    colors[i % colors.length],
-                    0.4,
-                    70
-                );
+                flame.position.set(-96 + i * 3.2, 3.5 + (i % 2) * 4.5, -77.5);
+                world.add(flame);
+                fireFlames.push({ mesh: flame, hp: 100 });
             }
         }
+        buildBurningBuilding();
 
-        /**
-         * 7. ตัวแปรสถานะการขับรถและการควบคุม
-         */
-        let currentVehicle = 'fire';
-        let starCount = 0;
-        let cameraMode = 0; // 0 = ตามหลังมุมสูงกำลังดี, 1 = ซูมใกล้สุดมันส์, 2 = มุมมองนก
-        const carState = {
-            pos: new THREE.Vector3(0, 0, 18),
-            rotY: Math.PI, // หันหน้าเข้าหาวงเวียน
-            speed: 0,
-            vy: 0,
-            isGrounded: true,
-            boostTimer: 0,
-            digAnim: 0
+        // 5.2 ภารกิจก่อสร้าง 2 ขั้นตอน: ตักหินที่เขตก่อสร้าง (125, 0, -45) -> เทลงบ่อที่ (125, 0, 45)
+        const diggerPickupPos = new THREE.Vector3(122, 0, -42);
+        const diggerDropoffPos = new THREE.Vector3(122, 0, 42);
+        const quarryRocks = [];
+        function buildConstructionSite() {
+            // กองหิน 4 ก้อนจุดตัก
+            [
+                [120, 1.5, -45], [124, 1.5, -45],
+                [122, 3.2, -45], [122, 1.5, -41]
+            ].forEach(([rx, ry, rz]) => {
+                const rock = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(1.7, 0),
+                    new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 })
+                );
+                rock.position.set(rx, ry, rz);
+                rock.castShadow = true;
+                world.add(rock);
+                quarryRocks.push(rock);
+            });
+
+            // บ่อเทหินจุดส่งของ (Drop-Off Pit)
+            const pitBorder = new THREE.Mesh(
+                new THREE.RingGeometry(5.5, 7.2, 24),
+                new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+            );
+            pitBorder.rotation.x = -Math.PI / 2;
+            pitBorder.position.set(diggerDropoffPos.x, 0.12, diggerDropoffPos.z);
+            world.add(pitBorder);
+
+            const pitHole = new THREE.Mesh(
+                new THREE.CircleGeometry(5.5, 24),
+                new THREE.MeshStandardMaterial({ color: 0x292524 })
+            );
+            pitHole.rotation.x = -Math.PI / 2;
+            pitHole.position.set(diggerDropoffPos.x, 0.08, diggerDropoffPos.z);
+            world.add(pitHole);
+        }
+        buildConstructionSite();
+
+        // 5.3 ภารกิจตำรวจไล่ล่า: รถสปอร์ตผู้ต้องสงสัยวิ่งวนรอบเมือง
+        const suspectCar = new THREE.Group();
+        const suspectBody = new THREE.Mesh(
+            new THREE.BoxGeometry(2.6, 1.1, 5.0),
+            new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.2, metalness: 0.7 })
+        );
+        suspectBody.position.y = 0.95;
+        suspectBody.castShadow = true;
+        const suspectCabin = new THREE.Mesh(
+            new THREE.BoxGeometry(2.1, 0.8, 2.4),
+            new THREE.MeshStandardMaterial({ color: 0x0f172a })
+        );
+        suspectCabin.position.set(0, 1.8, -0.2);
+        suspectCar.add(suspectBody, suspectCabin);
+        world.add(suspectCar);
+
+        const suspectWaypoints = [
+            new THREE.Vector3(-60, 0.17, -60),
+            new THREE.Vector3(60, 0.17, -60),
+            new THREE.Vector3(60, 0.17, 60),
+            new THREE.Vector3(-60, 0.17, 60)
+        ];
+        const suspectState = {
+            pos: new THREE.Vector3(60, 0.17, -60),
+            wpIndex: 2,
+            hp: 100,
+            stunTimer: 0
         };
 
-        const inputState = {
+        // วงแหวนจุดทำภารกิจบนพื้นถนน
+        const zoneRing = new THREE.Mesh(
+            new THREE.RingGeometry(5.0, 6.2, 32),
+            new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
+        );
+        zoneRing.rotation.x = -Math.PI / 2;
+        world.add(zoneRing);
+
+        /**
+         * ============================================================================
+         * 6. PARTICLE SYSTEM (WATER STREAM, EXHAUST SMOKE, DUST, SPARKS)
+         * ============================================================================
+         */
+        const particles = [];
+        function emitParticle(pos, vel, colorHex, size, life, gravity = 0.015) {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(size, 6, 6),
+                new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 })
+            );
+            mesh.position.copy(pos);
+            world.add(mesh);
+            particles.push({ mesh, vel, life, maxLife: life, gravity });
+        }
+
+        /**
+         * ============================================================================
+         * 7. GAME STATE, VEHICLE PHYSICS & CAMERA ORBIT SYSTEM
+         * ============================================================================
+         */
+        let currentVehicle = 'fire'; // 'fire' | 'digger' | 'police'
+        let score = 0;
+        let sirenOn = false;
+        let sirenTimer = 0;
+        let firstPersonCam = false;
+
+        // สถานะทรัพยากร
+        let fuelLevel = 100;
+        let waterLevel = 100;
+        let cargoLoaded = false; // สำหรับรถตักดิน (false = ว่างต้องไปตัก, true = มีหินเต็มกระบะต้องไปเท)
+        let bucketAnimTimer = 0;
+
+        // ฟิสิกส์ตัวรถผู้เล่น
+        const phys = {
+            pos: new THREE.Vector3(0, 0.17, 25),
+            rotY: Math.PI,
+            speed: 0,
+            steerAngle: 0,
+            rollAngle: 0
+        };
+
+        // ระบบควบคุม (Joystick + Buttons + Keyboard)
+        const ctrl = {
+            joyX: 0, // -1 (ซ้าย) ถึง 1 (ขวา)
+            joyY: 0,
             gas: false,
-            reverse: false,
-            left: false,
-            right: false,
+            brake: false,
             action: false
         };
 
-        // ฟังก์ชันสลับรถกู้ภัยได้ตลอดเวลา
-        function selectVehicle(type) {
-            currentVehicle = type;
-            sfx.playHorn(type);
+        // ระบบปัดนิ้วหมุนมุมกล้อง 360 องศา (Touch-Drag Camera Orbit)
+        let camYawOffset = 0;
+        let camPitch = 0.42;
+        let isOrbiting = false;
+        let lastOrbitX = 0;
+        let lastOrbitY = 0;
 
-            vehicleMeshes.fire.visible = (type === 'fire');
-            vehicleMeshes.digger.visible = (type === 'digger');
-            vehicleMeshes.police.visible = (type === 'police');
+        /**
+         * ============================================================================
+         * 8. UI & INPUT EVENT BINDINGS (CLEAN GLASSMORPHISM CONTROLS)
+         * ============================================================================
+         */
+        const menuDrawer = document.getElementById('menu-drawer');
+        document.getElementById('btn-menu-toggle').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            audio.init();
+            menuDrawer.classList.toggle('hidden');
+        });
 
-            // อัปเดต UI แถบเลือกรถ
-            document.querySelectorAll('.vehicle-tab').forEach(btn => {
-                const isSelected = btn.dataset.vehicle === type;
-                btn.classList.toggle('border-yellow-300', isSelected);
-                btn.classList.toggle('border-white', !isSelected);
-                btn.classList.toggle('scale-110', isSelected);
-                btn.classList.toggle('opacity-80', !isSelected);
+        function switchVehicle(veh) {
+            currentVehicle = veh;
+            audio.playHorn(veh);
+
+            vehicleModels.fire.visible = (veh === 'fire');
+            vehicleModels.digger.visible = (veh === 'digger');
+            vehicleModels.police.visible = (veh === 'police');
+
+            document.querySelectorAll('.veh-select-btn').forEach(b => {
+                const active = b.dataset.veh === veh;
+                b.classList.toggle('border-yellow-300', active);
+                b.classList.toggle('bg-white/40', active);
             });
 
-            // เปลี่ยนไอคอนปุ่มแอ็กชันตรงกลางตามรถที่เลือก
-            const actionBtn = document.getElementById('btn-action');
-            if (type === 'fire') {
-                actionBtn.textContent = '💦';
-                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-sky-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
-            } else if (type === 'digger') {
-                actionBtn.textContent = '⛏️';
-                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-amber-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
+            // อัปเดตไอคอนทรัพยากรและเรดาร์
+            const resIcon = document.getElementById('icon-resource');
+            const radarIcon = document.getElementById('radar-target-icon');
+            if (veh === 'fire') {
+                resIcon.textContent = '💧';
+                radarIcon.textContent = '🔥';
+            } else if (veh === 'digger') {
+                resIcon.textContent = '🪨';
+                radarIcon.textContent = cargoLoaded ? '🕳️' : '⛏️';
             } else {
-                actionBtn.textContent = '🔍';
-                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-indigo-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
+                resIcon.textContent = '⚡';
+                radarIcon.textContent = '🏎️';
+            }
+
+            menuDrawer.classList.add('hidden');
+        }
+
+        document.querySelectorAll('.veh-select-btn').forEach(btn => {
+            btn.addEventListener('pointerdown', e => {
+                e.stopPropagation();
+                switchVehicle(btn.dataset.veh);
+            });
+        });
+
+        // ปุ่มสลับกลางวัน / กลางคืน
+        document.getElementById('btn-daynight').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            isNight = !isNight;
+            e.currentTarget.textContent = isNight ? '🌙' : '☀️';
+
+            if (isNight) {
+                scene.background = skyNightColor;
+                scene.fog.color = skyNightColor;
+                sunLight.intensity = 0.18;
+                hemiLight.intensity = 0.25;
+                headLightL.intensity = 2.6;
+                headLightR.intensity = 2.6;
+                nightWindowMats.forEach(m => m.color.setHex(0xfef08a));
+                streetLampBulbs.forEach(m => m.color.setHex(0xfde047));
+            } else {
+                scene.background = skyDayColor;
+                scene.fog.color = new THREE.Color(0x93c5fd);
+                sunLight.intensity = 1.15;
+                hemiLight.intensity = 0.85;
+                headLightL.intensity = 0;
+                headLightR.intensity = 0;
+                nightWindowMats.forEach(m => m.color.setHex(0x38bdf8));
+                streetLampBulbs.forEach(m => m.color.setHex(0x94a3b8));
+            }
+        });
+
+        // ปุ่มปิด/เปิดเสียง
+        document.getElementById('btn-sound').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            const muted = audio.toggleMute();
+            e.currentTarget.textContent = muted ? '🔇' : '🔊';
+        });
+
+        // ปุ่มวาร์ปเข็มทิศไปใกล้ภารกิจ (เผื่อเด็กขับหลงไกล)
+        document.getElementById('btn-warp').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            const target = getCurrentObjectivePos();
+            phys.pos.set(target.x, 0.17, target.z + 14);
+            phys.rotY = Math.PI;
+            phys.speed = 0;
+            camYawOffset = 0;
+            menuDrawer.classList.add('hidden');
+            audio.playHorn(currentVehicle);
+        });
+
+        // ปุ่มสลับมุมกล้อง (Chase Cam / Hood First-Person Cam)
+        document.getElementById('btn-cam').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            firstPersonCam = !firstPersonCam;
+            camYawOffset = 0;
+        });
+
+        // ปุ่มแตร / เปิด-ปิดไซเรน
+        document.getElementById('btn-siren').addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            audio.init();
+            sirenOn = !sirenOn;
+            audio.playHorn(currentVehicle);
+            e.currentTarget.classList.toggle('active', sirenOn);
+        });
+
+        // Virtual Analog Joystick ฝั่งซ้ายล่าง
+        const joyZone = document.getElementById('joystick-zone');
+        const joyKnob = document.getElementById('joystick-knob');
+        let joyTouchId = null;
+
+        function updateJoystick(clientX, clientY) {
+            const rect = joyZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const maxR = rect.width * 0.36;
+
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxR) {
+                dx = (dx / dist) * maxR;
+                dy = (dy / dist) * maxR;
+            }
+
+            joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            ctrl.joyX = dx / maxR;
+            ctrl.joyY = dy / maxR;
+        }
+
+        function resetJoystick() {
+            joyTouchId = null;
+            joyKnob.style.transform = 'translate(0px, 0px)';
+            ctrl.joyX = 0;
+            ctrl.joyY = 0;
+        }
+
+        joyZone.addEventListener('touchstart', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            audio.init();
+            const t = e.changedTouches[0];
+            joyTouchId = t.identifier;
+            updateJoystick(t.clientX, t.clientY);
+        }, { passive: false });
+
+        joyZone.addEventListener('touchmove', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            for (const t of e.changedTouches) {
+                if (t.identifier === joyTouchId) {
+                    updateJoystick(t.clientX, t.clientY);
+                }
+            }
+        }, { passive: false });
+
+        joyZone.addEventListener('touchend', e => {
+            for (const t of e.changedTouches) {
+                if (t.identifier === joyTouchId) resetJoystick();
+            }
+        });
+
+        // รองรับเมาส์บน Joystick สำหรับทดสอบบนคอมพิวเตอร์
+        let mouseJoy = false;
+        joyZone.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            audio.init();
+            mouseJoy = true;
+            updateJoystick(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', e => {
+            if (mouseJoy) updateJoystick(e.clientX, e.clientY);
+        });
+        window.addEventListener('mouseup', () => {
+            if (mouseJoy) {
+                mouseJoy = false;
+                resetJoystick();
+            }
+        });
+
+        // ปุ่มคันเร่ง เบรก และปุ่ม Action ฝั่งขวาล่าง
+        function bindControlBtn(id, prop, onPressOnce) {
+            const el = document.getElementById(id);
+            const down = e => {
+                e.preventDefault();
+                e.stopPropagation();
+                audio.init();
+                ctrl[prop] = true;
+                el.classList.add('active');
+                if (onPressOnce) onPressOnce();
+            };
+            const up = e => {
+                e.preventDefault();
+                ctrl[prop] = false;
+                el.classList.remove('active');
+            };
+            el.addEventListener('touchstart', down, { passive: false });
+            el.addEventListener('touchend', up, { passive: false });
+            el.addEventListener('touchcancel', up, { passive: false });
+            el.addEventListener('mousedown', down);
+            window.addEventListener('mouseup', () => {
+                ctrl[prop] = false;
+                el.classList.remove('active');
+            });
+        }
+
+        bindControlBtn('btn-gas', 'gas');
+        bindControlBtn('btn-brake', 'brake');
+        bindControlBtn('btn-action', 'action', () => executeContextAction(true));
+
+        // ปัดนิ้วกลางหน้าจอเพื่อหมุนมุมกล้อง 360 องศา
+        wrapper.addEventListener('pointerdown', e => {
+            audio.init();
+            isOrbiting = true;
+            lastOrbitX = e.clientX;
+            lastOrbitY = e.clientY;
+        });
+        window.addEventListener('pointermove', e => {
+            if (!isOrbiting) return;
+            const dx = e.clientX - lastOrbitX;
+            const dy = e.clientY - lastOrbitY;
+            lastOrbitX = e.clientX;
+            lastOrbitY = e.clientY;
+            camYawOffset -= dx * 0.008;
+            camPitch = Math.max(0.15, Math.min(1.1, camPitch + dy * 0.005));
+        });
+        window.addEventListener('pointerup', () => {
+            isOrbiting = false;
+        });
+
+        // รองรับคีย์บอร์ด (WASD / ลูกศร / Space)
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') ctrl.gas = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') ctrl.brake = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') ctrl.joyX = -1;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') ctrl.joyX = 1;
+            if (e.key === ' ') {
+                ctrl.action = true;
+                executeContextAction(true);
+            }
+        });
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') ctrl.gas = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') ctrl.brake = false;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') ctrl.joyX = 0;
+            if (e.key === ' ') ctrl.action = false;
+        });
+
+        /**
+         * ============================================================================
+         * 9. CONTEXT-SENSITIVE ACTION & MISSION LOGIC
+         * ============================================================================
+         */
+        function getCurrentObjectivePos() {
+            if (currentVehicle === 'fire') return fireMissionPos;
+            if (currentVehicle === 'digger') return cargoLoaded ? diggerDropoffPos : diggerPickupPos;
+            return suspectState.pos;
+        }
+
+        function getNearestHydrant() {
+            for (const h of hydrants) {
+                if (phys.pos.distanceTo(h) < 11) return h;
+            }
+            return null;
+        }
+
+        // อัปเดตไอคอนปุ่ม Action อัตโนมัติตามบริบท
+        function updateContextActionButton() {
+            const btn = document.getElementById('btn-action');
+            const nearGas = phys.pos.distanceTo(gasStationPos) < 12;
+            const nearHydrant = currentVehicle === 'fire' && getNearestHydrant() !== null;
+            const distObj = phys.pos.distanceTo(getCurrentObjectivePos());
+
+            btn.classList.remove('action-ready');
+
+            if (nearGas && fuelLevel < 98) {
+                btn.textContent = '⛽';
+                btn.classList.add('action-ready');
+            } else if (nearHydrant && waterLevel < 98) {
+                btn.textContent = '🚰';
+                btn.classList.add('action-ready');
+            } else if (currentVehicle === 'fire') {
+                btn.textContent = '💦';
+                if (distObj < 20) btn.classList.add('action-ready');
+            } else if (currentVehicle === 'digger') {
+                btn.textContent = cargoLoaded ? '🚛' : '⛏️';
+                if (distObj < 15) btn.classList.add('action-ready');
+            } else {
+                btn.textContent = '⚡';
+                if (distObj < 18) btn.classList.add('action-ready');
             }
         }
 
-        // รีเซ็ตภารกิจใหม่เมื่อทำสำเร็จเพื่อให้เด็กเล่นซ้ำได้เรื่อยๆ
-        function resetMission(type) {
-            if (type === 'fire') {
-                missionZones.fire.hp = 100;
-                fireFlames3D.forEach(f => { f.visible = true; f.scale.set(1, 1, 1); });
-            } else if (type === 'digger') {
-                missionZones.digger.rocksLeft = 4;
-                boulders3D.forEach(b => {
-                    b.cleared = false;
-                    b.flyVy = 0;
-                    b.mesh.visible = true;
-                    b.mesh.position.copy(b.basePos);
-                });
-            } else if (type === 'police') {
-                missionZones.police.spotsLeft = 3;
-                kittenGroup.visible = false;
-                hidingSpots3D.forEach(s => {
-                    s.found = false;
-                    s.mesh.visible = true;
-                    s.mesh.scale.set(1, 1, 1);
-                });
+        // ทำงานเมื่อกดปุ่ม Action
+        function executeContextAction(isInitialClick) {
+            const nearGas = phys.pos.distanceTo(gasStationPos) < 12;
+            if (nearGas && fuelLevel < 100) {
+                fuelLevel = Math.min(100, fuelLevel + 1.5);
+                if (Math.random() < 0.25) audio.playRefill();
+                emitParticle(phys.pos.clone().add(new THREE.Vector3(0, 2.5, 0)), new THREE.Vector3(0, 0.12, 0), 0xfacc15, 0.3, 20, 0);
+                return;
             }
-        }
-
-        // ฟังก์ชันกดปุ่มแอ็กชันพิเศษ (ฉีดน้ำ / ตักหิน / หาลูกแมว / เทอร์โบ)
-        function triggerVehicleAction() {
-            const zone = missionZones[currentVehicle];
-            const distToZone = carState.pos.distanceTo(zone.pos);
 
             if (currentVehicle === 'fire') {
-                // ฉีดน้ำจากปืนฉีดน้ำบนหลังคา!
-                if (Math.random() < 0.35) sfx.playWater();
-                const forward = new THREE.Vector3(Math.sin(carState.rotY), 0, Math.cos(carState.rotY));
-                const muzzle = carState.pos.clone().add(new THREE.Vector3(0, 3.8, 0)).add(forward.clone().multiplyScalar(2));
-
-                for (let i = 0; i < 3; i++) {
-                    const vel = forward.clone().multiplyScalar(0.85 + Math.random() * 0.25);
-                    vel.y = 0.28 + Math.random() * 0.12;
-                    vel.x += (Math.random() - 0.5) * 0.15;
-                    vel.z += (Math.random() - 0.5) * 0.15;
-                    spawnParticle3D(muzzle, vel, 0x38bdf8, 0.38, 28);
+                // เติมน้ำที่หัวจ่ายน้ำดับเพลิงริมทาง
+                if (getNearestHydrant() && waterLevel < 100) {
+                    waterLevel = Math.min(100, waterLevel + 1.8);
+                    if (Math.random() < 0.25) audio.playRefill();
+                    emitParticle(phys.pos.clone().add(new THREE.Vector3(0, 2.5, 0)), new THREE.Vector3(0, 0.15, 0), 0x38bdf8, 0.3, 20, 0);
+                    return;
                 }
 
-                // ถ้าอยู่ใกล้บ้านไฟไหม้ ไฟจะค่อยๆ ดับ!
-                if (distToZone < 22 && zone.hp > 0) {
-                    zone.hp = Math.max(0, zone.hp - 2.2);
-                    const ratio = zone.hp / zone.maxHp;
-                    fireFlames3D.forEach((f, idx) => {
-                        const threshold = (idx + 1) / fireFlames3D.length;
-                        if (ratio < threshold - 0.2) {
-                            f.visible = false;
-                        } else {
-                            const s = Math.max(0.2, ratio);
-                            f.scale.set(s, s, s);
-                        }
-                    });
+                // ฉีดน้ำดับไฟ
+                if (waterLevel > 0) {
+                    waterLevel = Math.max(0, waterLevel - 0.35);
+                    if (Math.random() < 0.35) audio.playWaterSpray();
 
-                    if (zone.hp === 0) {
-                        starCount += 5;
-                        updateStarUI();
-                        sfx.playCelebration();
-                        spawnConfettiBurst(zone.pos);
-                        setTimeout(() => resetMission('fire'), 4000);
+                    const fwd = new THREE.Vector3(Math.sin(phys.rotY), 0, Math.cos(phys.rotY));
+                    const nozzle = phys.pos.clone().add(new THREE.Vector3(0, 3.6, 0)).add(fwd.clone().multiplyScalar(2.2));
+                    for (let i = 0; i < 3; i++) {
+                        const vel = fwd.clone().multiplyScalar(0.95 + Math.random() * 0.2);
+                        vel.y = 0.22 + Math.random() * 0.1;
+                        vel.x += (Math.random() - 0.5) * 0.14;
+                        vel.z += (Math.random() - 0.5) * 0.14;
+                        emitParticle(nozzle, vel, 0x38bdf8, 0.32, 26, 0.018);
+                    }
+
+                    // เช็กดับไฟที่อาคารเพลิงไหม้
+                    if (phys.pos.distanceTo(fireMissionPos) < 22) {
+                        const activeFlame = fireFlames.find(f => f.hp > 0);
+                        if (activeFlame) {
+                            activeFlame.hp = Math.max(0, activeFlame.hp - 2.2);
+                            const s = Math.max(0.1, activeFlame.hp / 100);
+                            activeFlame.mesh.scale.set(s, s, s);
+                            if (activeFlame.hp === 0) activeFlame.mesh.visible = false;
+
+                            // ถ้าดับไฟครบทุกกองแล้ว!
+                            if (fireFlames.every(f => f.hp === 0)) {
+                                score += 10;
+                                audio.playSuccess();
+                                setTimeout(() => {
+                                    fireFlames.forEach(f => { f.hp = 100; f.mesh.visible = true; f.mesh.scale.set(1, 1, 1); });
+                                }, 4000);
+                            }
+                        }
                     }
                 }
 
             } else if (currentVehicle === 'digger') {
-                // ขยับแขนตักดินขึ้นลง
-                if (carState.digAnim <= 0) {
-                    carState.digAnim = 1.0;
-                    sfx.playScoop();
+                if (!isInitialClick) return;
+                bucketAnimTimer = 1.0;
+                audio.playHydraulic();
 
-                    // ถ้าอยู่ใกล้กองหิน ตักหินกระเด็นออกทีละก้อน!
-                    if (distToZone < 22) {
-                        const rock = boulders3D.find(b => !b.cleared);
-                        if (rock) {
-                            rock.cleared = true;
-                            rock.flyVy = 0.95;
-                            missionZones.digger.rocksLeft--;
-                            if (missionZones.digger.rocksLeft === 0) {
-                                starCount += 5;
-                                updateStarUI();
-                                sfx.playCelebration();
-                                spawnConfettiBurst(zone.pos);
-                                setTimeout(() => resetMission('digger'), 4000);
-                            }
-                        }
-                    } else {
-                        // ถ้าไม่ได้อยู่จุดภารกิจ ให้พุ่งเทอร์โบ!
-                        carState.boostTimer = 35;
-                        sfx.playJump();
+                // ขั้นตอนที่ 1: ตักหินที่เขตก่อสร้าง
+                if (!cargoLoaded && phys.pos.distanceTo(diggerPickupPos) < 16) {
+                    cargoLoaded = true;
+                    quarryRocks.forEach(r => r.visible = false);
+                    cargoRocksInBed.forEach(r => r.visible = true);
+                    document.getElementById('radar-target-icon').textContent = '🕳️';
+                }
+                // ขั้นตอนที่ 2: เทหินลงบ่อส่งของ
+                else if (cargoLoaded && phys.pos.distanceTo(diggerDropoffPos) < 16) {
+                    cargoLoaded = false;
+                    cargoRocksInBed.forEach(r => r.visible = false);
+                    document.getElementById('radar-target-icon').textContent = '⛏️';
+                    score += 10;
+                    audio.playSuccess();
+
+                    // เอฟเฟกต์หินร่วงลงบ่อ
+                    for (let i = 0; i < 12; i++) {
+                        emitParticle(
+                            diggerDropoffPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, 2, (Math.random() - 0.5) * 3)),
+                            new THREE.Vector3(0, -0.2, 0),
+                            0x78716c,
+                            0.45,
+                            25
+                        );
                     }
+                    setTimeout(() => quarryRocks.forEach(r => r.visible = true), 3500);
                 }
 
             } else if (currentVehicle === 'police') {
-                // เปิดไซเรนค้นหาลูกแมวรอบจุดภารกิจ
-                sfx.playHorn('police');
-                if (distToZone < 24) {
-                    let foundAny = false;
-                    hidingSpots3D.forEach(spot => {
-                        if (!spot.found && carState.pos.distanceTo(spot.pos) < 15) {
-                            spot.found = true;
-                            spot.mesh.visible = false;
-                            foundAny = true;
-                            if (spot.hasCat) {
-                                kittenGroup.position.set(spot.pos.x, 0, spot.pos.z);
-                                kittenGroup.visible = true;
-                                sfx.playMeow();
-                                starCount += 5;
-                                updateStarUI();
-                                sfx.playCelebration();
-                                spawnConfettiBurst(spot.pos);
-                                setTimeout(() => resetMission('police'), 4000);
-                            } else {
-                                sfx.playTap();
-                                spawnParticle3D(spot.pos, new THREE.Vector3(0, 0.3, 0), 0xffffff, 0.8, 25);
-                            }
-                        }
-                    });
-                    if (!foundAny) carState.boostTimer = 35;
-                } else {
-                    carState.boostTimer = 35;
-                    sfx.playJump();
-                }
+                if (!isInitialClick) return;
+                // เปิดไซเรน + บูสต์ความเร็วไล่ล่า
+                sirenOn = true;
+                document.getElementById('btn-siren').classList.add('active');
+                phys.speed = Math.min(0.98, phys.speed + 0.35);
+                audio.playHorn('police');
             }
-        }
-
-        function updateStarUI() {
-            document.getElementById('star-count').textContent = starCount;
         }
 
         /**
-         * 8. ผูกปุ่มควบคุมหน้าจอสัมผัส (Touch) และคีย์บอร์ด
+         * ============================================================================
+         * 10. MAIN SIMULATION LOOP (60 FPS)
+         * ============================================================================
          */
-        function bindHoldButton(btnId, onDown, onUp) {
-            const btn = document.getElementById(btnId);
-            const start = e => {
-                e.preventDefault();
-                sfx.init();
-                btn.classList.add('pressed');
-                onDown();
-            };
-            const end = e => {
-                e.preventDefault();
-                btn.classList.remove('pressed');
-                if (onUp) onUp();
-            };
-            btn.addEventListener('touchstart', start, { passive: false });
-            btn.addEventListener('touchend', end, { passive: false });
-            btn.addEventListener('touchcancel', end, { passive: false });
-            btn.addEventListener('mousedown', start);
-            window.addEventListener('mouseup', () => {
-                btn.classList.remove('pressed');
-                if (onUp) onUp();
-            });
-        }
-
-        bindHoldButton('btn-gas', () => { inputState.gas = true; }, () => { inputState.gas = false; });
-        bindHoldButton('btn-reverse', () => { inputState.reverse = true; }, () => { inputState.reverse = false; });
-        bindHoldButton('btn-left', () => { inputState.left = true; }, () => { inputState.left = false; });
-        bindHoldButton('btn-right', () => { inputState.right = true; }, () => { inputState.right = false; });
-        bindHoldButton('btn-action', () => {
-            inputState.action = true;
-            triggerVehicleAction();
-        }, () => {
-            inputState.action = false;
-        });
-
-        // ปุ่มแตร
-        document.getElementById('btn-horn').addEventListener('pointerdown', e => {
-            e.preventDefault();
-            sfx.playHorn(currentVehicle);
-            // รถกระโดดดึ๋งน่ารักเวลาบีบแตร!
-            if (carState.isGrounded) {
-                carState.vy = 0.25;
-                carState.isGrounded = false;
-            }
-        });
-
-        // แถบเลือกรถ 3 คันด้านบน
-        document.querySelectorAll('.vehicle-tab').forEach(btn => {
-            btn.addEventListener('pointerdown', e => {
-                e.preventDefault();
-                selectVehicle(btn.dataset.vehicle);
-            });
-        });
-
-        // ปุ่มเปลี่ยนมุมกล้อง
-        document.getElementById('btn-camera').addEventListener('pointerdown', e => {
-            e.preventDefault();
-            sfx.playTap();
-            cameraMode = (cameraMode + 1) % 3;
-        });
-
-        // ปุ่มเข็มทิศวาร์ปไปใกล้จุดภารกิจของรถคันปัจจุบันทันที (ช่วยให้เด็ก 4 ขวบไม่หลงทาง)
-        document.getElementById('btn-mission-warp').addEventListener('pointerdown', e => {
-            e.preventDefault();
-            sfx.playJump();
-            const target = missionZones[currentVehicle].pos;
-            carState.pos.set(target.x, 0, target.z - 14);
-            carState.rotY = 0;
-            carState.speed = 0;
-            spawnConfettiBurst(carState.pos);
-        });
-
-        // ปุ่มแต่งหมวกรถ 3D บนหลังคา + เปลี่ยนโทนเสียงแตร
-        document.getElementById('btn-hat').addEventListener('pointerdown', e => {
-            e.preventDefault();
-            sfx.playStar();
-            hats[currentHatIndex].visible = false;
-            currentHatIndex = (currentHatIndex + 1) % hats.length;
-            hats[currentHatIndex].visible = true;
-            sfx.hornPitchShift = 0.85 + currentHatIndex * 0.15;
-            document.getElementById('hat-badge').textContent = currentHatIndex;
-            spawnConfettiBurst(carState.pos);
-        });
-
-        // ปุ่มตั้งค่า Parental Gate (ต้องกดค้าง 3 วินาทีเพื่อรีเซ็ตตำแหน่งรถกลับจุดเริ่มต้น)
-        let settingsHold = 0;
-        let holdingSettings = false;
-        const settingsBtn = document.getElementById('btn-settings');
-        const settingsRing = document.getElementById('settings-ring');
-
-        settingsBtn.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            holdingSettings = true;
-        });
-        window.addEventListener('pointerup', () => {
-            holdingSettings = false;
-            settingsHold = 0;
-            settingsRing.style.strokeDashoffset = 176;
-        });
-
-        // รองรับคีย์บอร์ด (Arrow Keys / WASD / Space) สำหรับทดสอบบนคอมพิวเตอร์
-        window.addEventListener('keydown', e => {
-            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputState.gas = true;
-            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') inputState.reverse = true;
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputState.left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputState.right = true;
-            if (e.key === ' ') {
-                inputState.action = true;
-                triggerVehicleAction();
-            }
-        });
-        window.addEventListener('keyup', e => {
-            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputState.gas = false;
-            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') inputState.reverse = false;
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputState.left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputState.right = false;
-            if (e.key === ' ') inputState.action = false;
-        });
-
-        /**
-         * 9. ลูปอัปเดตฟิสิกส์และเรนเดอร์ 3D (60 FPS)
-         */
-        let clockTime = 0;
+        let clock = 0;
 
         function animate() {
             requestAnimationFrame(animate);
-            clockTime += 0.016;
+            clock += 0.016;
 
-            // 9.1 อัปเดตวงแหวน Parental Gate
-            if (holdingSettings) {
-                settingsHold += 0.016;
-                const ratio = Math.min(1, settingsHold / 3.0);
-                settingsRing.style.strokeDashoffset = 176 * (1 - ratio);
-                if (ratio >= 1) {
-                    holdingSettings = false;
-                    settingsHold = 0;
-                    settingsRing.style.strokeDashoffset = 176;
-                    carState.pos.set(0, 0, 18);
-                    carState.rotY = Math.PI;
-                    carState.speed = 0;
-                    sfx.playCelebration();
+            // 10.1 อัปเดตฟิสิกส์การขับขี่รถผู้เล่น
+            const hasFuel = fuelLevel > 0;
+            const maxFwd = (currentVehicle === 'police' ? 0.78 : 0.62) * (hasFuel ? 1 : 0.35);
+            const maxRev = -0.34;
+
+            if (ctrl.gas) {
+                phys.speed = Math.min(maxFwd, phys.speed + 0.022);
+                fuelLevel = Math.max(0, fuelLevel - 0.012);
+            } else if (ctrl.brake) {
+                if (phys.speed > 0.05) {
+                    phys.speed *= 0.86; // เบรกหนึบ
+                } else {
+                    phys.speed = Math.max(maxRev, phys.speed - 0.02);
                 }
-            }
-
-            // 9.2 ฟิสิกส์การขับรถ
-            const maxSpeed = carState.boostTimer > 0 ? 0.95 : 0.58;
-            if (carState.boostTimer > 0) carState.boostTimer--;
-
-            if (inputState.gas || carState.boostTimer > 0) {
-                carState.speed = Math.min(maxSpeed, carState.speed + 0.025);
-            } else if (inputState.reverse) {
-                carState.speed = Math.max(-0.35, carState.speed - 0.025);
             } else {
-                carState.speed *= 0.92;
-                if (Math.abs(carState.speed) < 0.005) carState.speed = 0;
+                phys.speed *= 0.94; // แรงเฉื่อยไหลลื่น
+                if (Math.abs(phys.speed) < 0.004) phys.speed = 0;
             }
 
-            sfx.updateEngine(Math.abs(carState.speed) / 0.6);
+            // ไฟเบรกสว่างสีแดงเมื่อเหยียบเบรก
+            brakeLightMeshes.forEach(m => m.color.setHex(ctrl.brake ? 0xff0000 : 0x7f1d1d));
 
-            // เลี้ยวซ้าย-ขวา (หมุนได้แม้จอดนิ่งเพื่อให้เด็ก 4 ขวบหมุนหันทิศง่ายๆ)
-            const turnSpeed = 0.042;
-            if (inputState.left) carState.rotY += turnSpeed;
-            if (inputState.right) carState.rotY -= turnSpeed;
+            // การเลี้ยวจาก Virtual Joystick (แปรผันตามองศาที่ลาก)
+            const targetSteer = -ctrl.joyX * 0.55;
+            phys.steerAngle += (targetSteer - phys.steerAngle) * 0.2;
 
-            // เคลื่อนที่ไปข้างหน้าตามมุมรถ
-            const nextX = carState.pos.x + Math.sin(carState.rotY) * carState.speed;
-            const nextZ = carState.pos.z + Math.cos(carState.rotY) * carState.speed;
+            // หมุนล้อหน้าตามองศาเลี้ยว
+            frontWheels.forEach(fw => { fw.rotation.y = phys.steerAngle; });
 
-            // เช็กขอบเขตเมือง (-118 ถึง 118) และชนตึกแบบลื่นไหล (Sliding Collision)
-            let blocked = false;
-            if (Math.abs(nextX) > 118 || Math.abs(nextZ) > 118) blocked = true;
-            for (const c of colliders) {
-                if (Math.hypot(nextX - c.x, nextZ - c.z) < c.r + 2.4) {
-                    blocked = true;
+            // เลี้ยวตัวรถเมื่อเคลื่อนที่ (หรือหมุนช้าๆ ตอนจอดนิ่งเพื่อให้เด็กบังคับง่าย)
+            const turnFactor = Math.abs(phys.speed) > 0.03 ? (phys.speed >= 0 ? 1 : -1) : 0.35;
+            phys.rotY += phys.steerAngle * 0.068 * turnFactor;
+
+            // ตัวถังเอียงสมจริงเวลาเข้าโค้ง (Body Roll)
+            const targetRoll = -phys.steerAngle * phys.speed * 0.28;
+            phys.rollAngle += (targetRoll - phys.rollAngle) * 0.15;
+            chassisTiltGroup.rotation.z = phys.rollAngle;
+
+            // เคลื่อนที่และตรวจจับการชนตึก / แม่น้ำ
+            const nextX = phys.pos.x + Math.sin(phys.rotY) * phys.speed;
+            const nextZ = phys.pos.z + Math.cos(phys.rotY) * phys.speed;
+
+            let collided = false;
+            if (Math.abs(nextX) > 142 || Math.abs(nextZ) > 115) collided = true;
+
+            // กันตกแม่น้ำ (เว้นช่วงสะพาน Z = -60, 0, 60)
+            if (nextX > 72 && nextX < 98) {
+                const onBridge = roadGrid.some(rz => Math.abs(nextZ - rz) < 7.2);
+                if (!onBridge) collided = true;
+            }
+
+            // ชนตึกแบบ Sliding Collision
+            for (const b of buildingColliders) {
+                if (Math.abs(nextX - b.x) < b.hw && Math.abs(nextZ - b.z) < b.hd) {
+                    collided = true;
                     break;
                 }
             }
-            if (!blocked) {
-                carState.pos.x = nextX;
-                carState.pos.z = nextZ;
+
+            if (!collided) {
+                phys.pos.x = nextX;
+                phys.pos.z = nextZ;
             } else {
-                carState.speed *= -0.3; // เด้งกลับนุ่มๆ ไม่ติดค้าง
+                phys.speed *= -0.25;
             }
 
-            // เช็กเนินกระโดด 3D
-            ramps.forEach(r => {
-                if (Math.hypot(carState.pos.x - r.x, carState.pos.z - r.z) < 5.5 && carState.isGrounded && Math.abs(carState.speed) > 0.25) {
-                    carState.vy = 0.48;
-                    carState.isGrounded = false;
-                    sfx.playJump();
+            playerRoot.position.copy(phys.pos);
+            playerRoot.rotation.y = phys.rotY;
+
+            // หมุนล้อทั้ง 4 ตามความเร็ว
+            allWheels.forEach(w => { w.rotation.x += phys.speed * 0.85; });
+
+            // เสียงเครื่องยนต์แปรผันตามความเร็ว
+            audio.updateEngine(Math.abs(phys.speed) / 0.75, ctrl.brake);
+
+            // ควันท่อไอเสีย
+            if (Math.abs(phys.speed) > 0.08 && Math.random() < 0.3) {
+                const back = new THREE.Vector3(-Math.sin(phys.rotY), 0, -Math.cos(phys.rotY));
+                const exhaustPos = phys.pos.clone().add(new THREE.Vector3(0.8, 0.7, 0)).add(back.multiplyScalar(3.3));
+                emitParticle(exhaustPos, new THREE.Vector3(0, 0.06, 0), 0xcbd5e1, 0.22, 22, -0.002);
+            }
+
+            // กดปุ่ม Action ค้างไว้ (สำหรับฉีดน้ำ / เติมน้ำมัน / เติมน้ำ)
+            if (ctrl.action) {
+                executeContextAction(false);
+            }
+
+            // อนิเมชันบุ้งกี๋รถตักดิน
+            if (bucketAnimTimer > 0 && loaderBucketPivot) {
+                bucketAnimTimer -= 0.035;
+                loaderBucketPivot.rotation.x = -Math.sin(bucketAnimTimer * Math.PI) * 0.85;
+            }
+
+            // ไฟไซเรนกะพริบ + เสียงไซเรน 2 จังหวะ
+            if (sirenOn) {
+                sirenTimer += 0.016;
+                const phase = Math.floor(sirenTimer * 7) % 2 === 0;
+                sirenLights.forEach(s => {
+                    s.red.color.setHex(phase ? 0xff2222 : 0x450a0a);
+                    s.blue.color.setHex(phase ? 0x172554 : 0x3b82f6);
+                });
+                sirenPointLight.intensity = 2.2;
+                sirenPointLight.color.setHex(phase ? 0xef4444 : 0x3b82f6);
+                if (Math.floor(sirenTimer * 2) !== Math.floor((sirenTimer - 0.016) * 2)) {
+                    audio.playSirenPulse(currentVehicle);
+                }
+            } else {
+                sirenPointLight.intensity = 0;
+            }
+
+            // 10.2 อัปเดตรถจราจร AI
+            trafficCars.forEach(tc => {
+                const distToPlayer = tc.mesh.position.distanceTo(phys.pos);
+                const spd = distToPlayer < 10 ? 0 : tc.speed; // หยุดรอถ้าขวางทางผู้เล่น
+                if (tc.axis === 'x') {
+                    tc.mesh.position.x += tc.dir * spd;
+                    if (tc.mesh.position.x > 135) tc.mesh.position.x = -110;
+                    if (tc.mesh.position.x < -110) tc.mesh.position.x = 135;
+                } else {
+                    tc.mesh.position.z += tc.dir * spd;
+                    if (tc.mesh.position.z > 100) tc.mesh.position.z = -100;
+                    if (tc.mesh.position.z < -100) tc.mesh.position.z = 100;
                 }
             });
 
-            // แรงโน้มถ่วงกระโดด
-            if (!carState.isGrounded) {
-                carState.pos.y += carState.vy;
-                carState.vy -= 0.024;
-                if (carState.pos.y <= 0) {
-                    carState.pos.y = 0;
-                    carState.vy = 0;
-                    carState.isGrounded = true;
+            // 10.3 อัปเดตภารกิจรถตำรวจไล่ล่า (Suspect Car AI)
+            suspectCar.visible = (currentVehicle === 'police');
+            if (currentVehicle === 'police') {
+                if (suspectState.stunTimer > 0) {
+                    suspectState.stunTimer--;
+                } else {
+                    const targetWp = suspectWaypoints[suspectState.wpIndex];
+                    const toWp = targetWp.clone().sub(suspectState.pos);
+                    if (toWp.length() < 5) {
+                        suspectState.wpIndex = (suspectState.wpIndex + 1) % suspectWaypoints.length;
+                    } else {
+                        toWp.normalize();
+                        suspectState.pos.add(toWp.multiplyScalar(0.42));
+                        suspectCar.rotation.y = Math.atan2(toWp.x, toWp.z);
+                    }
+                }
+                suspectCar.position.copy(suspectState.pos);
+
+                // ชนหรือสกัดรถผู้ต้องสงสัย!
+                if (phys.pos.distanceTo(suspectState.pos) < 5.5) {
+                    suspectState.hp = Math.max(0, suspectState.hp - 1.5);
+                    suspectState.stunTimer = 15;
+                    if (Math.random() < 0.25) audio.playHydraulic();
+
+                    if (suspectState.hp === 0) {
+                        score += 15;
+                        audio.playSuccess();
+                        suspectState.hp = 100;
+                        suspectState.pos.set(-60, 0.17, -60);
+                    }
                 }
             }
 
-            // อัปเดตตำแหน่งและการหมุนของตัวรถ 3D
-            vehicleContainer.position.copy(carState.pos);
-            vehicleContainer.rotation.y = carState.rotY;
+            // 10.4 อัปเดตตำแหน่งวงแหวนภารกิจและเรดาร์ HUD
+            const objPos = getCurrentObjectivePos();
+            zoneRing.position.set(objPos.x, 0.2, objPos.z);
+            zoneRing.scale.setScalar(1 + Math.sin(clock * 4) * 0.08);
 
-            // หมุนล้อรถ & ใบพัดหมวก & แขนตักดิน
-            wheelList.forEach(w => { w.rotation.x += carState.speed * 0.65; });
-            if (currentHatIndex === 2) {
-                hats[2].children[1].rotation.y += 0.25;
-            }
-            if (carState.digAnim > 0 && diggerArmGroup) {
-                carState.digAnim -= 0.05;
-                diggerArmGroup.rotation.x = -Math.sin(carState.digAnim * Math.PI) * 0.75;
-            }
+            // หมุนเข็มเรดาร์มุมขวาบน
+            const angleToObj = Math.atan2(objPos.x - phys.pos.x, objPos.z - phys.pos.z);
+            const relAngle = -(angleToObj - phys.rotY) * (180 / Math.PI);
+            document.getElementById('radar-arrow').style.transform = `rotate(${relAngle}deg)`;
 
-            // ไฟไซเรนกะพริบสลับสี
-            const flash = Math.floor(clockTime * 8) % 2 === 0;
-            sirenMeshes.forEach(s => {
-                if (s.type === 'fire') s.mesh.material.color.setHex(flash ? 0x38bdf8 : 0xef4444);
-                else if (s.type === 'digger') s.mesh.material.color.setHex(flash ? 0xf97316 : 0xfacc15);
-                else s.mesh.material.color.setHex(flash ? 0xef4444 : 0x3b82f6);
-            });
+            // แถบสถานะภารกิจตรงกลางบน (แสดงเมื่อเข้าใกล้ภารกิจ)
+            const objHud = document.getElementById('objective-hud');
+            const objIcon = document.getElementById('obj-icon');
+            const objBar = document.getElementById('obj-bar');
+            const distToObj = phys.pos.distanceTo(objPos);
 
-            // 9.3 ลูกศรนำทาง 3D เหนือรถชี้ไปยังจุดภารกิจ
-            const targetMissionPos = missionZones[currentVehicle].pos;
-            const dx = targetMissionPos.x - carState.pos.x;
-            const dz = targetMissionPos.z - carState.pos.z;
-            const worldAngleToTarget = Math.atan2(dx, dz);
-            guideArrowGroup.rotation.y = worldAngleToTarget - carState.rotY;
-            guideArrowGroup.position.y = 6.0 + Math.sin(clockTime * 5) * 0.35;
-
-            // แสดงแถบสถานะภารกิจด้านบนเมื่อเข้าใกล้จุดภารกิจ
-            const distToTarget = Math.hypot(dx, dz);
-            const banner = document.getElementById('mission-banner');
-            const mIcon = document.getElementById('mission-icon');
-            const mBar = document.getElementById('mission-progress-bar');
-
-            if (distToTarget < 25) {
-                banner.classList.remove('hidden');
+            if (distToObj < 28) {
+                objHud.classList.remove('hidden');
                 if (currentVehicle === 'fire') {
-                    mIcon.textContent = '🔥';
-                    mBar.style.width = `${100 - missionZones.fire.hp}%`;
+                    objIcon.textContent = '🔥';
+                    const totalHp = fireFlames.reduce((acc, f) => acc + f.hp, 0);
+                    objBar.style.width = `${100 - totalHp / 5}%`;
                 } else if (currentVehicle === 'digger') {
-                    mIcon.textContent = '🪨';
-                    mBar.style.width = `${((4 - missionZones.digger.rocksLeft) / 4) * 100}%`;
+                    objIcon.textContent = cargoLoaded ? '🕳️' : '⛏️';
+                    objBar.style.width = cargoLoaded ? '50%' : '0%';
                 } else {
-                    mIcon.textContent = '🐱';
-                    mBar.style.width = `${((3 - missionZones.police.spotsLeft) / 3) * 100}%`;
+                    objIcon.textContent = '🏎️';
+                    objBar.style.width = `${100 - suspectState.hp}%`;
                 }
             } else {
-                banner.classList.add('hidden');
+                objHud.classList.add('hidden');
             }
 
-            // กดปุ่มแอ็กชันค้างไว้เพื่อฉีดน้ำต่อเนื่องสำหรับรถดับเพลิง
-            if (inputState.action && currentVehicle === 'fire') {
-                triggerVehicleAction();
-            }
+            // อัปเดตเกจมุมซ้ายบน & คะแนน
+            document.getElementById('bar-fuel').style.width = `${fuelLevel}%`;
+            const resPercent = currentVehicle === 'fire' ? waterLevel : (currentVehicle === 'digger' ? (cargoLoaded ? 100 : 0) : 100);
+            document.getElementById('bar-resource').style.width = `${resPercent}%`;
+            document.getElementById('score-val').textContent = score;
+            updateContextActionButton();
 
-            // 9.4 เก็บดาวสีทองทั่วเมือง
-            goldStars.forEach(s => {
-                if (s.active) {
-                    s.mesh.rotation.y += 0.04;
-                    s.mesh.position.y = 2.2 + Math.sin(clockTime * 3 + s.mesh.position.x) * 0.35;
-                    if (carState.pos.distanceTo(s.mesh.position) < 4.5) {
-                        s.active = false;
-                        s.mesh.visible = false;
-                        s.respawnTimer = 600; // เกิดใหม่ใน 10 วินาที
-                        starCount++;
-                        updateStarUI();
-                        sfx.playStar();
-                        spawnConfettiBurst(s.mesh.position);
-                    }
-                } else {
-                    s.respawnTimer--;
-                    if (s.respawnTimer <= 0) {
-                        s.active = true;
-                        s.mesh.visible = true;
-                    }
-                }
-            });
-
-            // 9.5 ชนกรวยจราจรและบอลชายหาดเด้งดึ๋ง
-            knockableProps.forEach(p => {
-                const dist = Math.hypot(carState.pos.x - p.mesh.position.x, carState.pos.z - p.mesh.position.z);
-                if (dist < 3.4) {
-                    const pushAngle = Math.atan2(p.mesh.position.z - carState.pos.z, p.mesh.position.x - carState.pos.x);
-                    p.vx = Math.cos(pushAngle) * 0.65;
-                    p.vz = Math.sin(pushAngle) * 0.65;
-                    p.vy = 0.35;
-                    sfx.playTap();
-                }
-                p.mesh.position.x += p.vx;
-                p.mesh.position.z += p.vz;
-                p.mesh.position.y += p.vy;
-                p.vx *= 0.92;
-                p.vz *= 0.92;
-                if (p.mesh.position.y > p.baseY) {
-                    p.vy -= 0.025;
-                } else {
-                    p.mesh.position.y = p.baseY;
-                    p.vy = 0;
-                }
-            });
-
-            // 9.6 ซุ้มล้างรถฟองสบู่ 3D
-            washBrushes.forEach((b, i) => { b.rotation.y += (i === 0 ? 0.12 : -0.12); });
-            if (carState.pos.distanceTo(washStationPos) < 7.5) {
-                if (Math.random() < 0.35) {
-                    sfx.playBubble();
-                    const bPos = carState.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5));
-                    spawnParticle3D(bPos, new THREE.Vector3(0, 0.15, 0), 0xffffff, 0.55, 35);
-                }
-            }
-
-            // 9.7 อัปเดตแอนิเมชันก้อนหินลอย & เปลวไฟ & ลูกแมวกระโดด
-            boulders3D.forEach(b => {
-                if (b.cleared && b.mesh.visible) {
-                    b.mesh.position.y += b.flyVy;
-                    b.mesh.rotation.x += 0.15;
-                    if (b.mesh.position.y > 35) b.mesh.visible = false;
-                }
-            });
-            fireFlames3D.forEach((f, i) => {
-                if (f.visible) f.rotation.y = clockTime * 4 + i;
-            });
-            if (kittenGroup.visible) {
-                kittenGroup.position.y = Math.abs(Math.sin(clockTime * 6)) * 1.4;
-                kittenGroup.rotation.y += 0.05;
-            }
-
-            // อัปเดตอนุภาค 3D ทั้งหมด
-            for (let i = particles3D.length - 1; i >= 0; i--) {
-                const p = particles3D[i];
+            // 10.5 อัปเดต Particles ทั้งหมด
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.015;
+                p.vel.y -= p.gravity;
                 p.life--;
-                const scale = p.life / p.maxLife;
-                p.mesh.scale.set(scale, scale, scale);
+                const r = p.life / p.maxLife;
+                p.mesh.scale.setScalar(r);
+                p.mesh.material.opacity = r * 0.85;
                 if (p.life <= 0) {
-                    worldGroup.remove(p.mesh);
-                    particles3D.splice(i, 1);
+                    world.remove(p.mesh);
+                    particles.splice(i, 1);
                 }
             }
 
-            // 9.8 กล้องติดตามรถแบบนุ่มนวล (Smooth Follow Camera)
-            let camDist = 19;
-            let camHeight = 11.5;
-            if (cameraMode === 1) { camDist = 12; camHeight = 7; }
-            else if (cameraMode === 2) { camDist = 28; camHeight = 24; }
+            // 10.6 กล้องติดตามรถแบบนุ่มนวล + หมุนกล้อง 360 องศาด้วยการปัดนิ้ว
+            if (!isOrbiting && Math.abs(phys.speed) > 0.1) {
+                camYawOffset *= 0.94; // ค่อยๆ กลับมาด้านหลังรถอัตโนมัติเวลาขับ
+            }
 
-            const idealCamPos = new THREE.Vector3(
-                carState.pos.x - Math.sin(carState.rotY) * camDist,
-                carState.pos.y + camHeight,
-                carState.pos.z - Math.cos(carState.rotY) * camDist
-            );
-            camera.position.lerp(idealCamPos, 0.1);
-            const lookTarget = new THREE.Vector3(
-                carState.pos.x + Math.sin(carState.rotY) * 6,
-                carState.pos.y + 2.2,
-                carState.pos.z + Math.cos(carState.rotY) * 6
-            );
-            camera.lookAt(lookTarget);
+            if (firstPersonCam) {
+                // มุมมองฝากระโปรงรถ (Hood Camera)
+                const fwd = new THREE.Vector3(Math.sin(phys.rotY), 0, Math.cos(phys.rotY));
+                camera.position.copy(phys.pos).add(new THREE.Vector3(0, 3.1, 0)).add(fwd.clone().multiplyScalar(1.2));
+                const lookPt = camera.position.clone().add(fwd.multiplyScalar(20)).add(new THREE.Vector3(0, -1.5, 0));
+                camera.lookAt(lookPt);
+            } else {
+                // มุมมองบุคคลที่ 3 (Third-Person Orbit Chase Cam)
+                const totalYaw = phys.rotY + camYawOffset;
+                const dist = 16.5;
+                const height = 6.5 + camPitch * 12;
+                const desiredCamPos = new THREE.Vector3(
+                    phys.pos.x - Math.sin(totalYaw) * dist,
+                    phys.pos.y + height,
+                    phys.pos.z - Math.cos(totalYaw) * dist
+                );
+                camera.position.lerp(desiredCamPos, 0.14);
+                const lookTarget = new THREE.Vector3(
+                    phys.pos.x + Math.sin(totalYaw) * 5,
+                    phys.pos.y + 2.0,
+                    phys.pos.z + Math.cos(totalYaw) * 5
+                );
+                camera.lookAt(lookTarget);
+            }
 
             renderer.render(scene, camera);
         }
 
-        // ปรับขนาดจออัตโนมัติเมื่อหมุนหน้าจอหรือย่อขยาย
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // เริ่มเกมเมื่อโหลดหน้าเสร็จสมบูรณ์
         window.onload = function() {
-            selectVehicle('fire');
+            switchVehicle('fire');
             animate();
         };
     </script>
