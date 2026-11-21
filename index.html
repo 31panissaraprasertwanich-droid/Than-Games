@@ -2,1151 +2,1693 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RCM Dashboard - หม้อแปลงและ GIS (Professional RCM System)</title>
-    <!-- Tailwind CSS CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ทีมกู้ภัยจิ๋วตะลุยเมือง 3D - Tiny Rescue Squad 3D</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        industrial: {
-                            50: '#fff7ed',
-                            100: '#ffedd5',
-                            500: '#f97316',
-                            600: '#ea580c',
-                            700: '#c2410c',
-                            800: '#9a3412',
-                            900: '#7c2d12',
-                            dark: '#1e1b18'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Mali:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        @media print {
-            body { background: white !important; color: black !important; }
-            header, nav, footer, button, .no-print { display: none !important; }
-            .print-container { background: white !important; color: black !important; border: none !important; box-shadow: none !important; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #38bdf8;
+            font-family: 'Fredoka', 'Mali', cursive, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* ปุ่มกดสไตล์ของเล่น 3D นูนเด้ง */
+        .toy-btn {
+            transition: transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.1s;
+            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.28), 0 10px 18px rgba(0, 0, 0, 0.25);
+        }
+        .toy-btn:active, .toy-btn.pressed {
+            transform: translateY(5px) scale(0.95);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.28), 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 1.3s infinite ease-in-out;
+        }
+        @keyframes tiltPhone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+        }
+        .animate-tilt {
+            animation: tiltPhone 2s infinite ease-in-out;
+        }
+        #rotate-warning {
+            display: none;
+        }
+        @media screen and (orientation: portrait) and (max-width: 768px) {
+            #rotate-warning {
+                display: flex;
+            }
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+<body>
 
-    <!-- Header -->
-    <header class="bg-industrial-dark border-b border-industrial-700/50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-lg no-print">
-        <div class="flex items-center space-x-3">
-            <div class="bg-industrial-600 p-2.5 rounded-lg text-white shadow-md shadow-industrial-600/30">
-                <i class="fa-solid fa-industry text-xl"></i>
-            </div>
-            <div>
-                <h1 class="text-lg sm:text-xl font-bold tracking-wide text-white">RCM MANAGEMENT SYSTEM</h1>
-                <p class="text-xs text-industrial-400">ระบบบริหารจัดการความน่าเชื่อถือหม้อแปลงและ GIS (Professional Module)</p>
-            </div>
+    <!-- แจ้งเตือนหมุนจอแนวนอนสำหรับมือถือ -->
+    <div id="rotate-warning" class="fixed inset-0 z-50 bg-sky-500 flex-col items-center justify-center text-white p-6 text-center">
+        <div class="w-24 h-40 border-8 border-white rounded-3xl flex items-center justify-center mb-6 animate-tilt shadow-xl bg-sky-400">
+            <div class="w-3 h-3 bg-white rounded-full mt-28"></div>
         </div>
-        <div class="flex items-center space-x-4 self-end sm:self-center">
-            <span class="px-3 py-1 bg-industrial-900/80 border border-industrial-700 text-industrial-400 text-xs rounded-full font-medium">
-                <i class="fa-solid fa-circle text-emerald-500 text-[10px] mr-1 animate-pulse"></i> ระบบพร้อมใช้งาน
-            </span>
-        </div>
-    </header>
+        <div class="text-4xl font-bold drop-shadow-md">หมุนจอแนวนอนนะจ๊ะ!</div>
+        <div class="text-6xl mt-4">📱➡️🔄</div>
+    </div>
 
-    <!-- Navigation Tabs -->
-    <nav class="bg-slate-800/80 border-b border-slate-700 px-4 sm:px-6 flex space-x-2 sm:space-x-4 overflow-x-auto no-print">
-        <button onclick="switchTab('pm-schedule')" id="tab-btn-pm-schedule" class="tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-industrial-500 text-industrial-500 flex items-center space-x-2 whitespace-nowrap">
-            <i class="fa-solid fa-calendar-days"></i>
-            <span>ตาราง PM (เรียงตาม RPN)</span>
-        </button>
-        <button onclick="switchTab('device-analysis')" id="tab-btn-device-analysis" class="tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
-            <i class="fa-solid fa-file-pen"></i>
-            <span>บันทึกผลทดสอบ & จัดการไฟล์</span>
-        </button>
-        <button onclick="switchTab('fmea-calc')" id="tab-btn-fmea-calc" class="tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
-            <i class="fa-solid fa-table-cells"></i>
-            <span>ตาราง FMEA แยกตามอุปกรณ์</span>
-        </button>
-        <button onclick="switchTab('dga-calc')" id="tab-btn-dga-calc" class="tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
-            <i class="fa-solid fa-calculator"></i>
-            <span>วิเคราะห์ DGA (6 วิธี)</span>
-        </button>
-    </nav>
+    <div id="game-container">
+        <!-- พื้นที่แสดงผล 3D Three.js -->
+        <div id="three-canvas-wrapper" class="w-full h-full"></div>
 
-    <!-- Main Container -->
-    <main class="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
-
-        <!-- GLOBAL EXPORT HUB BAR -->
-        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 no-print">
-            <div class="flex items-center space-x-2 text-xs text-industrial-300">
-                <i class="fa-solid fa-cloud-arrow-down text-base text-industrial-500"></i>
-                <span><b>ศูนย์ส่งออกข้อมูล (Export Hub):</b> เลือกรูปแบบไฟล์ที่ต้องการดาวน์โหลดรายงานระบบ</span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <button onclick="downloadExcelCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center space-x-1.5">
-                    <i class="fa-solid fa-file-excel"></i><span>ดาวน์โหลด Excel/CSV</span>
+        <!-- UI ด้านบน (HUD) -->
+        <div class="pointer-events-none fixed top-0 left-0 right-0 p-3 sm:p-4 flex items-start justify-between z-20">
+            
+            <!-- ซ้ายบน: ปุ่มตั้งค่า (Parental Gate กดค้าง 3 วิ) + ปุ่มเปลี่ยนมุมกล้อง -->
+            <div class="flex items-center gap-3 pointer-events-auto">
+                <button id="btn-settings" class="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/90 border-4 border-slate-300 flex items-center justify-center text-3xl shadow-lg active:scale-95">
+                    ⚙️
+                    <!-- วงแหวนโหลดเมื่อกดค้าง 3 วินาที -->
+                    <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
+                        <circle id="settings-ring" cx="32" cy="32" r="28" fill="none" stroke="#ef4444" stroke-width="6" stroke-dasharray="176" stroke-dashoffset="176" stroke-linecap="round"/>
+                    </svg>
                 </button>
-                <button onclick="printNativePdf()" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center space-x-1.5">
-                    <i class="fa-solid fa-file-pdf"></i><span>บันทึกเป็น PDF</span>
-                </button>
-                <button onclick="downloadJsonData()" class="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center space-x-1.5">
-                    <i class="fa-solid fa-code"></i><span>สำรองข้อมูล JSON</span>
+
+                <button id="btn-camera" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-sky-400 border-4 border-white flex items-center justify-center text-3xl text-white">
+                    🎥
                 </button>
             </div>
-        </div>
 
-        <!-- TAB 1: PM SCHEDULE -->
-        <div id="tab-pm-schedule" class="tab-content space-y-6">
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md flex items-center justify-between">
-                    <div><p class="text-xs text-slate-400 font-medium">อุปกรณ์ทั้งหมด</p><h3 id="stat-total" class="text-2xl font-bold text-white mt-1">40</h3></div>
-                    <div class="bg-blue-500/10 text-blue-400 p-3 rounded-lg border border-blue-500/20"><i class="fa-solid fa-server text-lg"></i></div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md flex items-center justify-between">
-                    <div><p class="text-xs text-slate-400 font-medium">ปกติ (Normal)</p><h3 id="stat-normal" class="text-2xl font-bold text-emerald-400 mt-1">0</h3></div>
-                    <div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-lg border border-emerald-500/20"><i class="fa-solid fa-circle-check text-lg"></i></div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md flex items-center justify-between">
-                    <div><p class="text-xs text-slate-400 font-medium">เฝ้าระวัง (Warning)</p><h3 id="stat-warning" class="text-2xl font-bold text-amber-400 mt-1">0</h3></div>
-                    <div class="bg-amber-500/10 text-amber-400 p-3 rounded-lg border border-amber-500/20"><i class="fa-solid fa-triangle-exclamation text-lg"></i></div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md flex items-center justify-between">
-                    <div><p class="text-xs text-slate-400 font-medium">วิกฤต (Critical)</p><h3 id="stat-critical" class="text-2xl font-bold text-rose-400 mt-1">0</h3></div>
-                    <div class="bg-rose-500/10 text-rose-400 p-3 rounded-lg border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation text-lg"></i></div>
-                </div>
+            <!-- กลางบน: แถบเลือกรถทั้ง 3 คัน เปลี่ยนได้ตลอดเวลา -->
+            <div class="flex items-center gap-2 sm:gap-4 bg-white/85 backdrop-blur-sm px-3 py-2 rounded-full border-4 border-white shadow-xl pointer-events-auto">
+                <button id="select-fire" data-vehicle="fire" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 border-4 border-yellow-300 flex items-center justify-center text-3xl sm:text-4xl scale-110">
+                    🚒
+                </button>
+                <button id="select-digger" data-vehicle="digger" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-yellow-400 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl opacity-80">
+                    🚜
+                </button>
+                <button id="select-police" data-vehicle="police" class="vehicle-tab toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl opacity-80">
+                    🚓
+                </button>
             </div>
 
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                <div>
-                    <h2 class="text-base sm:text-lg font-semibold text-white">ตารางแผนการซ่อมบำรุงรักษา (PM Schedule)</h2>
-                    <p class="text-xs text-slate-400">จัดเรียงตามค่าความเสี่ยง RPN จากสูงไปต่ำอย่างถูกต้องแม่นยำ</p>
-                </div>
-                <div class="w-full sm:w-auto">
-                    <input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหารหัส หรือ ตำแหน่ง..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-industrial-500 w-full sm:w-64">
-                </div>
-            </div>
+            <!-- ขวาบน: นับดาว + ปุ่มเข็มทิศภารกิจ + ปุ่มเปลี่ยนหมวกแต่งรถ -->
+            <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+                <!-- ปุ่มแต่งหมวกรถ 3D -->
+                <button id="btn-hat" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-purple-500 border-4 border-white flex items-center justify-center text-3xl text-white relative">
+                    👑
+                    <span id="hat-badge" class="absolute -bottom-1 -right-1 bg-yellow-400 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
+                </button>
 
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-sm min-w-[700px]">
-                        <thead>
-                            <tr class="bg-slate-900/70 text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700">
-                                <th class="py-3.5 px-4 font-semibold">รหัสอุปกรณ์</th>
-                                <th class="py-3.5 px-4 font-semibold">ประเภท</th>
-                                <th class="py-3.5 px-4 font-semibold">ตำแหน่ง</th>
-                                <th class="py-3.5 px-4 font-semibold">HEALTH INDEX</th>
-                                <th class="py-3.5 px-4 font-semibold text-industrial-400">ค่า RPN</th>
-                                <th class="py-3.5 px-4 font-semibold">PM รอบถัดไป</th>
-                                <th class="py-3.5 px-4 font-semibold">สถานะ</th>
-                                <th class="py-3.5 px-4 font-semibold text-center">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pm-table-body" class="divide-y divide-slate-700/50"></tbody>
-                    </table>
-                </div>
-                <div class="bg-slate-900/60 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-slate-700 gap-4">
-                    <span id="pagination-info" class="text-xs text-slate-400">แสดง 1 ถึง 10 จากทั้งหมด 40 รายการ</span>
-                    <div class="flex space-x-1" id="pagination-controls"></div>
+                <!-- ปุ่มเข็มทิศนำทางไปจุดภารกิจ -->
+                <button id="btn-mission-warp" class="toy-btn w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-400 border-4 border-white flex items-center justify-center text-3xl animate-pulse-glow">
+                    🧭
+                </button>
+
+                <!-- ตัวนับดาวสีทอง -->
+                <div class="flex items-center gap-2 bg-white/95 border-4 border-yellow-400 rounded-full px-4 py-2 shadow-lg">
+                    <span class="text-2xl sm:text-3xl">⭐</span>
+                    <span id="star-count" class="text-2xl sm:text-3xl font-bold text-amber-700">0</span>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 2: PRO DATA ENTRY -->
-        <div id="tab-device-analysis" class="tab-content hidden space-y-6">
-            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 class="text-base sm:text-lg font-semibold text-white">บันทึกผลทดสอบและจัดการไฟล์แนบ</h2>
-                    <p class="text-xs text-slate-400">บันทึกผลแล็บพร้อมตรวจสอบไฟล์รายงานแล็บและรูปถ่ายความเสียหายย้อนหลังได้ทันที</p>
-                </div>
-                <div class="flex items-center space-x-2 w-full sm:w-auto">
-                    <label class="text-sm font-medium text-slate-300 whitespace-nowrap">เลือกอุปกรณ์:</label>
-                    <select id="analysis-device-select" onchange="onAnalysisDeviceChange()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-industrial-500 w-full sm:w-64"></select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-slate-800 rounded-xl border border-slate-700 p-5 space-y-4 shadow-lg">
-                    <h3 class="text-sm font-bold text-industrial-400 uppercase tracking-wider"><i class="fa-solid fa-circle-info mr-2"></i> สรุปสถานะอุปกรณ์ปัจจุบัน</h3>
-                    <div class="space-y-3 text-xs">
-                        <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400">รหัสอุปกรณ์:</span><span id="ana-id" class="font-bold text-white">-</span></div>
-                        <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400">ประเภท:</span><span id="ana-type" class="text-slate-200">-</span></div>
-                        <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400">Health Index:</span><span id="ana-hi" class="font-bold">-</span></div>
-                        <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400">ค่า RPN:</span><span id="ana-rpn" class="font-bold text-industrial-400">-</span></div>
-                        <div class="flex justify-between pb-1"><span class="text-slate-400">สถานะ:</span><span id="ana-status" class="px-2 py-0.5 rounded font-bold">-</span></div>
-                    </div>
-
-                    <div class="pt-3 border-t border-slate-700 space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-slate-300"><i class="fa-solid fa-paperclip mr-1 text-industrial-400"></i> หลักฐานแนบ:</span>
-                            <button onclick="simulateSampleAttachment()" class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded hover:bg-industrial-800 transition">
-                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> จำลองไฟล์ตัวอย่าง
-                            </button>
-                        </div>
-                        <div id="attached-files-container" class="space-y-1.5 text-xs"><span class="text-slate-500 italic">ยังไม่มีการแนบไฟล์ในรอบนี้</span></div>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 p-5 space-y-3 shadow-lg flex flex-col justify-between">
-                    <div>
-                        <h3 class="text-sm font-bold text-industrial-400 uppercase tracking-wider mb-2"><i class="fa-solid fa-brain mr-2"></i> บทวิเคราะห์เหตุผลเชิงวิศวกรรม</h3>
-                        <p id="ana-rationale" class="text-xs text-slate-300 leading-relaxed bg-slate-900/80 p-4 rounded-xl border border-slate-700">-</p>
-                    </div>
-                    <div class="pt-3 border-t border-slate-700 text-xs text-slate-400 flex justify-between">
-                        <span>PM ล่าสุด: <b id="ana-lastpm" class="text-slate-200">-</b></span>
-                        <span>PM รอบถัดไป: <b id="ana-nextpm" class="text-slate-200">-</b></span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl space-y-6">
-                <div class="border-b border-slate-700 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h3 class="text-sm font-bold text-industrial-400 uppercase tracking-wider"><i class="fa-solid fa-file-pen mr-2"></i> ฟอร์มกรอกผลทดสอบและกำหนดคะแนนความเสี่ยง</h3>
-                    <button onclick="openStandardModal()" class="bg-industrial-600 hover:bg-industrial-700 border border-industrial-500 text-white text-xs px-3.5 py-1.5 rounded-lg font-bold shadow transition flex items-center space-x-2">
-                        <i class="fa-solid fa-shield-halved"></i><span>ดูมาตรฐาน FMEA & RCM Compliant</span>
-                    </button>
-                </div>
-
-                <div>
-                    <h4 class="text-xs font-bold text-white mb-2 uppercase text-slate-300"><i class="fa-solid fa-vial mr-1"></i> ค่าผลแล็บก๊าซละลาย (DGA Lab Results ในหน่วย ppm)</h4>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-xs">
-                        <div><label class="block text-slate-400 mb-1">H2 (ppm)</label><input type="number" id="new-h2" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">CH4 (ppm)</label><input type="number" id="new-ch4" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">C2H2 (ppm)</label><input type="number" id="new-c2h2" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">C2H4 (ppm)</label><input type="number" id="new-c2h4" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">C2H6 (ppm)</label><input type="number" id="new-c2h6" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">CO (ppm)</label><input type="number" id="new-co" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                        <div><label class="block text-slate-400 mb-1">CO2 (ppm)</label><input type="number" id="new-co2" oninput="autoCalculateRpn()" class="bg-slate-900 border border-slate-700 rounded p-2 text-white w-full font-mono"></div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 space-y-3">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <h4 class="text-xs font-bold text-industrial-400 uppercase tracking-wider"><i class="fa-solid fa-calculator mr-1"></i> ประเมินคะแนน FMEA & RPN</h4>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
-                        <div><label class="block text-slate-400 mb-1">ความรุนแรง S (1-10):</label><input type="number" id="new-s" min="1" max="10" oninput="manualCalculateRpn()" class="bg-slate-800 border border-slate-700 rounded p-2 text-white font-mono font-bold w-full"></div>
-                        <div><label class="block text-slate-400 mb-1">โอกาสเกิด O (1-10):</label><input type="number" id="new-o" min="1" max="10" oninput="manualCalculateRpn()" class="bg-slate-800 border border-slate-700 rounded p-2 text-white font-mono font-bold w-full"></div>
-                        <div><label class="block text-slate-400 mb-1">การตรวจจับ D (1-10):</label><input type="number" id="new-d" min="1" max="10" oninput="manualCalculateRpn()" class="bg-slate-800 border border-slate-700 rounded p-2 text-white font-mono font-bold w-full"></div>
-                        <div><label class="block text-slate-400 mb-1">ค่า RPN รวม (S × O × D):</label><input type="number" id="new-rpn" class="bg-slate-800 border border-industrial-500 rounded p-2 text-industrial-400 font-mono font-bold w-full" readonly></div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2">
-                        <label class="block font-bold text-slate-300"><i class="fa-solid fa-file-pdf mr-1 text-rose-400"></i> แนบไฟล์เอกสารผลตรวจจากห้องแล็บ (PDF / Excel):</label>
-                        <input type="file" id="lab-file-upload" accept=".pdf,.xlsx,.xls,.doc" class="w-full text-slate-400 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-industrial-600 file:text-white hover:file:bg-industrial-700 cursor-pointer">
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2">
-                        <label class="block font-bold text-slate-300"><i class="fa-solid fa-image mr-1 text-emerald-400"></i> แนบรูปถ่ายสภาพความเสียหาย / จุดตรวจวัด (Image):</label>
-                        <input type="file" id="damage-photo-upload" accept="image/*" class="w-full text-slate-400 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-industrial-600 file:text-white hover:file:bg-industrial-700 cursor-pointer">
-                    </div>
-                </div>
-
-                <div class="flex justify-end pt-2">
-                    <button onclick="submitNewTestData()" class="bg-industrial-600 hover:bg-industrial-700 text-white px-6 py-2.5 rounded-lg text-xs font-bold transition shadow-lg flex items-center space-x-2">
-                        <i class="fa-solid fa-floppy-disk"></i><span>บันทึกผลทดสอบ แนบไฟล์ & อัปเดตระบบทันที</span>
-                    </button>
-                </div>
+        <!-- ไอคอนแจ้งเตือนภารกิจตรงกลางบน (ปรากฏเมื่ออยู่ใกล้จุดภารกิจหรือกำลังทำภารกิจ) -->
+        <div id="mission-banner" class="hidden pointer-events-none fixed top-24 left-1/2 -translate-x-1/2 z-20 bg-white/95 border-4 border-amber-400 rounded-full px-6 py-2 shadow-xl flex items-center gap-3">
+            <span id="mission-icon" class="text-4xl">🔥</span>
+            <div class="w-36 sm:w-48 h-5 bg-slate-200 rounded-full overflow-hidden border-2 border-slate-400">
+                <div id="mission-progress-bar" class="h-full bg-emerald-500 transition-all duration-150" style="width: 0%;"></div>
             </div>
         </div>
 
-        <!-- TAB 3: FMEA TABLE -->
-        <div id="tab-fmea-calc" class="tab-content hidden space-y-6">
-            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 class="text-base sm:text-lg font-semibold text-white">ตารางวิเคราะห์ FMEA แยกตามรายอุปกรณ์</h2>
-                    <p class="text-xs text-slate-400">ตรวจสอบโหมดความเสียหายและคะแนน RPN อัปเดตตามผลทดสอบล่าสุด</p>
-                </div>
-                <div class="flex items-center space-x-2 w-full sm:w-auto">
-                    <label class="text-xs text-slate-300 whitespace-nowrap">กรองตามอุปกรณ์:</label>
-                    <select id="fmea-filter-select" onchange="renderFmeaTable()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-industrial-500 w-full sm:w-48">
-                        <option value="ALL">แสดงทั้งหมด (All 40 Assets)</option>
-                    </select>
-                </div>
+        <!-- UI ด้านล่าง: ปุ่มควบคุมสำหรับเด็ก 4 ขวบ (ใหญ่ ชัด กดง่าย) -->
+        <div class="pointer-events-none fixed bottom-0 left-0 right-0 p-4 sm:p-6 flex items-end justify-between z-20">
+            
+            <!-- ซ้ายล่าง: ปุ่มเลี้ยวซ้าย - เลี้ยวขวา ขนาดใหญ่ -->
+            <div class="flex items-center gap-3 sm:gap-5 pointer-events-auto">
+                <button id="btn-left" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-sky-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
+                    ⬅️
+                </button>
+                <button id="btn-right" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-sky-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
+                    ➡️
+                </button>
             </div>
 
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-                <div class="p-4 bg-slate-900/70 border-b border-slate-700 flex justify-between items-center">
-                    <h3 class="text-sm font-bold text-white uppercase"><i class="fa-solid fa-list-check mr-2"></i> รายการวิเคราะห์ FMEA และคะแนนความเสี่ยง</h3>
-                    <span id="fmea-count" class="text-xs text-slate-400">ทั้งหมด 40 รายการ</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs min-w-[900px]">
-                        <thead>
-                            <tr class="bg-slate-900/90 text-slate-400 uppercase tracking-wider border-b border-slate-700">
-                                <th class="py-3 px-3">รหัสอุปกรณ์</th>
-                                <th class="py-3 px-3">Potential Failure Mode</th>
-                                <th class="py-3 px-3">Potential Effect of Failure</th>
-                                <th class="py-3 px-3">Potential Cause</th>
-                                <th class="py-3.5 px-3 text-center">S</th>
-                                <th class="py-3.5 px-3 text-center">O</th>
-                                <th class="py-3.5 px-3 text-center">D</th>
-                                <th class="py-3.5 px-3 text-center font-bold text-industrial-400">RPN</th>
-                                <th class="py-3 px-3">Recommended Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fmea-table-body" class="divide-y divide-slate-700/50"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+            <!-- กลางล่าง: ปุ่มแอ็กชันพิเศษ (ฉีดน้ำ / ตักหิน / ไซเรนหาแมว / เทอร์โบ) -->
+            <div class="flex items-center gap-3 sm:gap-4 pointer-events-auto">
+                <button id="btn-horn" class="toy-btn w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-500 border-4 border-white flex items-center justify-center text-4xl sm:text-5xl">
+                    📯
+                </button>
 
-        <!-- TAB 4: DGA CALCULATOR -->
-        <div id="tab-dga-calc" class="tab-content hidden space-y-6">
-            <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 class="text-base sm:text-lg font-semibold text-white">ระบบวิเคราะห์ก๊าซละลายน้ำมันหม้อแปลงเชิงลึก พร้อมคำอธิบายความหมาย</h2>
-                    <p class="text-xs text-slate-400">เลือกอุปกรณ์เพื่อดูผลวิเคราะห์ผ่าน 6 วิธี พร้อมคำแปลความหมายทางวิศวกรรมไฟฟ้า</p>
-                </div>
-                <div class="flex items-center space-x-2 w-full sm:w-auto">
-                    <label class="text-sm font-medium text-slate-300 whitespace-nowrap">เลือกอุปกรณ์:</label>
-                    <select id="dga-device-select" onchange="onDgaDeviceChange()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-industrial-500 w-full sm:w-64"></select>
-                </div>
+                <button id="btn-action" class="toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-rose-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow">
+                    💦
+                </button>
             </div>
 
-            <div class="bg-slate-800 rounded-xl p-4 sm:p-5 border border-slate-700 shadow-lg">
-                <h3 class="text-xs sm:text-sm font-bold text-industrial-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-flask mr-2"></i> ค่าก๊าซละลายปัจจุบันในน้ำมัน (ppm)</h3>
-                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center" id="gas-values-container"></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Method 1: Duval -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 1</span>
-                            <h4 class="font-bold text-white text-sm mt-1">Duval Triangle Method (IEC 60599)</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">สัดส่วน CH4 / C2H4 / C2H2</span>
-                    </div>
-                    <div class="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
-                        <div class="relative flex justify-center shrink-0">
-                            <canvas id="duvalCanvas" width="220" height="200" class="bg-slate-900 rounded-lg border border-slate-700 shadow-inner"></canvas>
-                        </div>
-                        <div class="space-y-2 text-xs w-full">
-                            <div class="flex justify-between border-b border-slate-800 pb-1"><span class="text-slate-400">CH4:</span><span id="duval-p-ch4" class="font-mono font-bold text-slate-200">0%</span></div>
-                            <div class="flex justify-between border-b border-slate-800 pb-1"><span class="text-slate-400">C2H4:</span><span id="duval-p-c2h4" class="font-mono font-bold text-slate-200">0%</span></div>
-                            <div class="flex justify-between border-b border-slate-800 pb-1"><span class="text-slate-400">C2H2:</span><span id="duval-p-c2h2" class="font-mono font-bold text-slate-200">0%</span></div>
-                            <div class="pt-1">
-                                <span class="text-slate-400 block mb-1">ผลประเมินโซน & ความหมาย:</span>
-                                <div id="res-duval-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Method 2: Rogers -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 2</span>
-                            <h4 class="font-bold text-white text-sm mt-1">Rogers Ratio Method (IEC 60599)</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">อัตราส่วนก๊าซ 4 คู่</span>
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">C2H2 / CH4:</span><span id="rogers-r1" class="font-mono font-bold text-white text-sm">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">CH4 / H2:</span><span id="rogers-r2" class="font-mono font-bold text-white text-sm">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">C2H4 / C2H6:</span><span id="rogers-r3" class="font-mono font-bold text-white text-sm">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">C2H6 / C2H2:</span><span id="rogers-r4" class="font-mono font-bold text-white text-sm">-</span></div>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block mb-1">การแปลผล & ความหมายทางวิศวกรรม:</span>
-                            <div id="res-rogers-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Method 3: IEC -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 3</span>
-                            <h4 class="font-bold text-white text-sm mt-1">IEC 3-Ratio Method</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">รหัสอัตราส่วน I1, I2, I5</span>
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
-                        <div class="grid grid-cols-3 gap-2 text-center">
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">Ratio i1</span><span id="iec-i1" class="font-mono font-bold text-white">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">Ratio i2</span><span id="iec-i2" class="font-mono font-bold text-white">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">Ratio i5</span><span id="iec-i5" class="font-mono font-bold text-white">-</span></div>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block mb-1">รหัสโค้ด IEC & ความหมาย:</span>
-                            <div id="res-iec-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Method 4: Doernenburg -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 4</span>
-                            <h4 class="font-bold text-white text-sm mt-1">Doernenburg Ratio Method</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">IEEE C57.104</span>
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">CH4 / H2:</span><span id="doern-r1" class="font-mono font-bold text-white">-</span></div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700"><span class="text-slate-400 block text-[10px]">C2H2 / C2H4:</span><span id="doern-r2" class="font-mono font-bold text-white">-</span></div>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block mb-1">ผลประเมิน & ความหมาย:</span>
-                            <div id="res-doern-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Method 5: Key Gas -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 5</span>
-                            <h4 class="font-bold text-white text-sm mt-1">Key Gas Method</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">IEEE / IEC</span>
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
-                        <div class="flex justify-between items-center bg-slate-800 p-3 rounded border border-slate-700">
-                            <span class="text-slate-300">ก๊าซเด่น (Key Gas):</span>
-                            <span id="keygas-name" class="font-mono font-bold text-amber-400 text-sm">-</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block mb-1">แหล่งที่มาของปัญหาและความหมาย:</span>
-                            <div id="res-keygas-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Method 6: TDCG -->
-                <div class="lg:col-span-6 bg-slate-800 rounded-xl border border-slate-700 p-5 flex flex-col justify-between shadow-lg space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <div>
-                            <span class="text-[10px] bg-industrial-900 text-industrial-400 border border-industrial-700 px-2 py-0.5 rounded font-bold">วิธีที่ 6</span>
-                            <h4 class="font-bold text-white text-sm mt-1">TDCG & IEEE Condition Criteria</h4>
-                        </div>
-                        <span class="text-xs text-slate-400">IEEE C57.104</span>
-                    </div>
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
-                        <div class="flex justify-between items-center bg-slate-800 p-3 rounded border border-slate-700">
-                            <span class="text-slate-300">TDCG รวม:</span>
-                            <span id="tdcg-total-val" class="font-mono font-bold text-white text-sm">- ppm</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block mb-1">ระดับสภาพความรุนแรง & แผนปฏิบัติการ:</span>
-                            <div id="res-tdcg-detail" class="text-xs font-bold text-industrial-400 bg-industrial-950 p-2.5 rounded border border-industrial-800 leading-relaxed">-</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- STANDARD GUIDELINE MODAL -->
-    <div id="standard-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-slate-900 px-4 sm:px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-industrial-600/20 text-industrial-500 p-2 rounded-lg border border-industrial-600/30"><i class="fa-solid fa-shield-halved text-lg"></i></div>
-                    <div>
-                        <h3 class="font-bold text-white text-sm sm:text-base">คู่มือเกณฑ์มาตรฐาน FMEA & RCM (Severity, Occurrence, Detection)</h3>
-                        <p class="text-xs text-slate-400">อ้างอิงตามมาตรฐานสากลสำหรับการประเมินค่าความเสี่ยงอุปกรณ์ไฟฟ้า</p>
-                    </div>
-                </div>
-                <button onclick="closeStandardModal()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-
-            <div class="p-4 sm:p-6 overflow-y-auto space-y-6 text-xs text-slate-300 flex-1">
-                <div class="space-y-2">
-                    <h4 class="font-bold text-industrial-400 uppercase tracking-wider text-sm"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 1. ความรุนแรง (Severity - S)</h4>
-                    <div class="border border-slate-700 rounded-lg overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-900 text-slate-400 uppercase"><tr><th class="p-2.5 w-12 text-center">คะแนน</th><th class="p-2.5">เกณฑ์การประเมินผลกระทบต่อระบบไฟฟ้า</th></tr></thead>
-                            <tbody class="divide-y divide-slate-700/50">
-                                <tr><td class="p-2.5 text-center font-bold text-rose-400">9 - 10</td><td class="p-2.5">เกิดการระเบิด, ไฟไหม้, หรือไฟฟ้าดับทั้งสถานีไฟฟ้าย่อย (Catastrophic / Hazardous)</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-amber-400">7 - 8</td><td class="p-2.5">อุปกรณ์เสียหายหนัก ต้องปลดสับ C/B ฉุกเฉิน ส่งผลกระทบต่อผู้ใช้ไฟบางส่วน</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-yellow-400">4 - 6</td><td class="p-2.5">เกิดความเสียหายปานกลาง สามารถซ่อมบำรุงตามแผน (Moderate / Minor Impact)</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-emerald-400">1 - 3</td><td class="p-2.5">แทบไม่ส่งผลกระทบต่อการจ่ายไฟ ค่าพารามิเตอร์เบี่ยงเบนเล็กน้อย (Low / None)</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <h4 class="font-bold text-industrial-400 uppercase tracking-wider text-sm"><i class="fa-solid fa-clock-rotate-left mr-1"></i> 2. โอกาสเกิด (Occurrence - O)</h4>
-                    <div class="border border-slate-700 rounded-lg overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-900 text-slate-400 uppercase"><tr><th class="p-2.5 w-12 text-center">คะแนน</th><th class="p-2.5">ความถี่และความน่าจะเป็นในการเกิดความเสียหาย</th></tr></thead>
-                            <tbody class="divide-y divide-slate-700/50">
-                                <tr><td class="p-2.5 text-center font-bold text-rose-400">8 - 10</td><td class="p-2.5">สูงมาก: เกิดขึ้นต่อเนื่องประจำทุกเดือน หรืออุปกรณ์อายุการใช้งานเกินพิกัด</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-amber-400">4 - 7</td><td class="p-2.5">ปานกลาง: เกิดขึ้นเป็นครั้งคราวในรอบปี หรือพบความผิดปกติจากการทำ PM ล่าสุด</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-emerald-400">1 - 3</td><td class="p-2.5">ต่ำมาก: แทบไม่เคยเกิดขึ้น (< 1 ครั้งในรอบ 5-10 ปี) อุปกรณ์ใหม่หรือเกรดสูง</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <h4 class="font-bold text-industrial-400 uppercase tracking-wider text-sm"><i class="fa-solid fa-magnifying-glass mr-1"></i> 3. การตรวจจับ (Detection - D)</h4>
-                    <div class="border border-slate-700 rounded-lg overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-900 text-slate-400 uppercase"><tr><th class="p-2.5 w-12 text-center">คะแนน</th><th class="p-2.5">ประสิทธิภาพของระบบตรวจวัดก่อนลุกลาม</th></tr></thead>
-                            <tbody class="divide-y divide-slate-700/50">
-                                <tr><td class="p-2.5 text-center font-bold text-rose-400">8 - 10</td><td class="p-2.5">ยากมาก / ตรวจไม่พบ: ความเสียหายเกิดขึ้นฉับพลันโดยไม่มีสัญญาณเตือนล่วงหน้า</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-amber-400">4 - 7</td><td class="p-2.5">ปานกลาง: ตรวจพบได้จากการตรวจวัดประจำปี หรือค่า DGA เริ่มสูงขึ้น</td></tr>
-                                <tr><td class="p-2.5 text-center font-bold text-emerald-400">1 - 3</td><td class="p-2.5">สูงมาก: มีระบบ Online Monitoring / SCADA แจ้งเตือนความผิดปกติทันที</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-900/80 px-4 sm:px-6 py-3 border-t border-slate-700 flex justify-end">
-                <button onclick="closeStandardModal()" class="bg-industrial-600 hover:bg-industrial-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition">เข้าใจแล้ว</button>
+            <!-- ขวาล่าง: ปุ่มถอยหลัง (เล็กกว่า) + ปุ่มคันเร่งสีเขียวขนาดใหญ่ยักษ์ -->
+            <div class="flex items-end gap-3 sm:gap-4 pointer-events-auto">
+                <button id="btn-reverse" class="toy-btn w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-500 border-4 border-white flex items-center justify-center text-3xl sm:text-4xl">
+                    ⬇️
+                </button>
+                <button id="btn-gas" class="toy-btn w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center text-white text-5xl sm:text-6xl">
+                    ⬆️
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- PREVIEW ATTACHMENT MODAL -->
-    <div id="preview-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            <div class="bg-slate-900 px-4 sm:px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                <h3 id="preview-title" class="font-bold text-white text-sm">ตัวอย่างไฟล์แนบ</h3>
-                <button onclick="closePreviewModal()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="p-6 text-center space-y-4">
-                <div id="preview-content" class="bg-slate-900 p-6 rounded-xl border border-slate-700 text-slate-300 text-sm"></div>
-            </div>
-            <div class="bg-slate-900/80 px-4 sm:px-6 py-3 border-t border-slate-700 flex justify-end">
-                <button onclick="closePreviewModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg text-xs font-bold transition">ปิดหน้าต่าง</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- DETAILED TEST POPUP MODAL -->
-    <div id="test-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-slate-900 px-4 sm:px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-industrial-600/20 text-industrial-500 p-2 rounded-lg border border-industrial-600/30"><i class="fa-solid fa-file-waveform"></i></div>
-                    <div>
-                        <h3 id="modal-title" class="font-bold text-white text-sm sm:text-base">ผลทดสอบเชิงลึก</h3>
-                        <p id="modal-subtitle" class="text-xs text-slate-400">อุปกรณ์: -</p>
-                    </div>
-                </div>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-
-            <div class="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
-                <div class="bg-industrial-950/80 border border-industrial-600/40 p-4 rounded-xl space-y-2">
-                    <h4 class="text-xs font-bold text-industrial-400 uppercase tracking-wider"><i class="fa-solid fa-brain mr-2"></i> บทวิเคราะห์เหตุผลเชิงวิศวกรรมและการประเมิน (Engineering Diagnosis Rationale)</h4>
-                    <p id="modal-rationale-text" class="text-xs text-slate-300 leading-relaxed">กำลังประมวลผลที่มาของการวิเคราะห์...</p>
-                </div>
-
-                <div>
-                    <h4 class="text-xs sm:text-sm font-bold text-industrial-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-vial mr-2"></i> ผลวิเคราะห์ก๊าซละลายในน้ำมันและเกณฑ์มาตรฐาน</h4>
-                    <div class="border border-slate-700 rounded-xl overflow-x-auto">
-                        <table class="w-full text-left text-xs min-w-[500px]">
-                            <thead class="bg-slate-900/80 text-slate-400 uppercase border-b border-slate-700">
-                                <tr><th class="py-2.5 px-3">ชนิดก๊าซ</th><th class="py-2.5 px-3">ค่าตรวจวัด (ppm)</th><th class="py-2.5 px-3">มาตรฐานอ้างอิง (Limit)</th><th class="py-2.5 px-3">สถานะ</th></tr>
-                            </thead>
-                            <tbody id="modal-dga-tbody" class="divide-y divide-slate-700/50"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 class="text-xs sm:text-sm font-bold text-industrial-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-bolt mr-2"></i> ผลทดสอบทางไฟฟ้าและเกณฑ์มาตรฐาน</h4>
-                    <div class="border border-slate-700 rounded-xl overflow-x-auto">
-                        <table class="w-full text-left text-xs min-w-[500px]">
-                            <thead class="bg-slate-900/80 text-slate-400 uppercase border-b border-slate-700">
-                                <tr><th class="py-2.5 px-3">หัวข้อทดสอบ</th><th class="py-2.5 px-3">ค่าที่วัดได้</th><th class="py-2.5 px-3">เกณฑ์มาตรฐาน (Criteria)</th><th class="py-2.5 px-3">ผลสรุป</th></tr>
-                            </thead>
-                            <tbody id="modal-elec-tbody" class="divide-y divide-slate-700/50"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-900/80 px-4 sm:px-6 py-3 border-t border-slate-700 flex justify-end">
-                <button onclick="closeModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition">ปิดหน้าต่าง</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="bg-industrial-dark border-t border-slate-800 text-center py-4 text-xs text-slate-500">
-        RCM Industrial Asset Management &copy; 2026 | Transformers & GIS Monitoring Module
-    </footer>
-
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        const assetsData = [];
-        const fmeaData = [];
-        const locations = ["Substation A (BKK)", "Substation B (NC)", "Substation C (SR)", "Substation D (RY)"];
-        let statCounts = { normal: 0, warning: 0, critical: 0 };
-
-        for (let i = 1; i <= 40; i++) {
-            const isTransformer = i <= 25;
-            const prefix = isTransformer ? "TR" : "GIS";
-            const numStr = String(isTransformer ? i : (i - 25)).padStart(2, '0');
-            const code = `${prefix}-${numStr}`;
-            const type = isTransformer ? "Transformer" : "GIS";
-            
-            let healthIndex, status, statusClass, rpn, s, o, d;
-            if (i <= 6) {
-                healthIndex = (Math.random() * 14 + 60).toFixed(1);
-                status = "Critical";
-                statusClass = "bg-rose-500/10 text-rose-400 border-rose-500/30";
-                s = 9; o = 8; d = 6;
-                statCounts.critical++;
-            } else if (i <= 18) {
-                healthIndex = (Math.random() * 10 + 75).toFixed(1);
-                status = "Warning";
-                statusClass = "bg-amber-500/10 text-amber-400 border-amber-500/30";
-                s = 7; o = 5; d = 4;
-                statCounts.warning++;
-            } else {
-                healthIndex = (Math.random() * 15 + 85).toFixed(1);
-                status = "Normal";
-                statusClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
-                s = 4; o = 2; d = 2;
-                statCounts.normal++;
+        /**
+         * 1. ระบบเสียงสังเคราะห์ Web Audio API (ทำงานได้ทันทีโดยไม่ต้องใช้ไฟล์เสียงภายนอก)
+         */
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.engineOsc = null;
+                this.engineGain = null;
+                this.hornPitchShift = 1.0;
             }
-            rpn = s * o * d;
 
-            let gases = { 
-                h2: Math.floor(Math.random() * 100) + 15, 
-                ch4: Math.floor(Math.random() * 80) + 10, 
-                c2h2: status === "Critical" ? Math.floor(Math.random() * 60) + 40 : Math.floor(Math.random() * 10), 
-                c2h4: Math.floor(Math.random() * 70) + 15, 
-                c2h6: Math.floor(Math.random() * 50) + 10, 
-                co: Math.floor(Math.random() * 250 + 50), 
-                co2: Math.floor(Math.random() * 1000 + 500) 
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTap() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            playHorn(vehicleType) {
+                this.init();
+                const now = this.ctx.currentTime;
+                const p = this.hornPitchShift;
+                if (vehicleType === 'fire') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(620 * p, now);
+                    osc.frequency.linearRampToValueAtTime(840 * p, now + 0.25);
+                    osc.frequency.linearRampToValueAtTime(580 * p, now + 0.5);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.55);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.55);
+                } else if (vehicleType === 'digger') {
+                    [0, 0.2].forEach(offset => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(210 * p, now + offset);
+                        gain.gain.setValueAtTime(0.18, now + offset);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.16);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + offset);
+                        osc.stop(now + offset + 0.16);
+                    });
+                } else {
+                    [0, 0.16].forEach((offset, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime((i === 0 ? 880 : 1180) * p, now + offset);
+                        gain.gain.setValueAtTime(0.22, now + offset);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.14);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + offset);
+                        osc.stop(now + offset + 0.14);
+                    });
+                }
+            }
+
+            playStar() {
+                this.init();
+                const now = this.ctx.currentTime;
+                [880, 1174.66, 1318.51].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.05);
+                    gain.gain.setValueAtTime(0.2, now + i * 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.05);
+                    osc.stop(now + i * 0.05 + 0.25);
+                });
+            }
+
+            playWater() {
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 0.14;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1150;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.16, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.14);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playScoop() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.exponentialRampToValueAtTime(320, now + 0.18);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+
+            playMeow() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(620, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.15);
+                osc.frequency.exponentialRampToValueAtTime(540, now + 0.45);
+                gain.gain.setValueAtTime(0.28, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            }
+
+            playJump() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(240, now);
+                osc.frequency.exponentialRampToValueAtTime(640, now + 0.22);
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+
+            playBubble() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                const f = 450 + Math.random() * 450;
+                osc.frequency.setValueAtTime(f, now);
+                osc.frequency.exponentialRampToValueAtTime(f * 1.5, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            playCelebration() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const times = [0, 0.11, 0.22, 0.34, 0.48, 0.62];
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + times[i]);
+                    gain.gain.setValueAtTime(0.24, now + times[i]);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + times[i] + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + times[i]);
+                    osc.stop(now + times[i] + 0.25);
+                });
+            }
+
+            updateEngine(speedRatio) {
+                if (!this.ctx) return;
+                if (speedRatio > 0.05) {
+                    if (!this.engineOsc) {
+                        this.engineOsc = this.ctx.createOscillator();
+                        this.engineGain = this.ctx.createGain();
+                        this.engineOsc.type = 'sawtooth';
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 220;
+                        this.engineOsc.connect(filter);
+                        filter.connect(this.engineGain);
+                        this.engineGain.connect(this.ctx.destination);
+                        this.engineOsc.start();
+                    }
+                    this.engineOsc.frequency.setTargetAtTime(52 + speedRatio * 48, this.ctx.currentTime, 0.05);
+                    this.engineGain.gain.setTargetAtTime(0.065 * speedRatio, this.ctx.currentTime, 0.05);
+                } else if (this.engineGain) {
+                    this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+                }
+            }
+        }
+
+        const sfx = new SoundSystem();
+
+        /**
+         * 2. ตั้งค่าฉาก Three.js 3D, แสงเงา และกล้อง
+         */
+        const container = document.getElementById('three-canvas-wrapper');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x7dd3fc);
+        scene.fog = new THREE.FogExp2(0xbae6fd, 0.0045);
+
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // แสงสว่างสดใสสไตล์การ์ตูน
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x4ade80, 0.85);
+        hemiLight.position.set(0, 80, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
+        dirLight.position.set(55, 95, 45);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 10;
+        dirLight.shadow.camera.far = 250;
+        const d = 110;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        /**
+         * 3. สร้างโลก 3D (เมืองการ์ตูน, ถนน, เนินกระโดด, ลานล้างรถ, ต้นไม้, บ่อน้ำ)
+         */
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+
+        // พื้นหญ้าสีเขียวสดใส
+        const groundGeo = new THREE.PlaneGeometry(360, 360);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 });
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.receiveShadow = true;
+        worldGroup.add(groundMesh);
+
+        // รั้วขอบเมืองรอบนอกกันรถตกโลก
+        function buildBoundaryFences() {
+            const fenceMat = new THREE.MeshLambertMaterial({ color: 0xfef3c7 });
+            const postMat = new THREE.MeshLambertMaterial({ color: 0xf97316 });
+            const limit = 125;
+            for (let i = -limit; i <= limit; i += 10) {
+                [
+                    [i, -limit, 0],
+                    [i, limit, 0],
+                    [-limit, i, Math.PI / 2],
+                    [limit, i, Math.PI / 2]
+                ].forEach(([x, z, rotY]) => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.5, 1.2), postMat);
+                    post.position.set(x, 1.75, z);
+                    post.castShadow = true;
+                    worldGroup.add(post);
+
+                    const rail = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 0.5), fenceMat);
+                    rail.position.set(x, 2.2, z);
+                    rail.rotation.y = rotY;
+                    worldGroup.add(rail);
+                });
+            }
+        }
+        buildBoundaryFences();
+
+        // สร้างเครือข่ายถนน 3D (สี่แยก + วงเวียนกลางเมือง)
+        function buildRoads() {
+            const roadMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+
+            // ถนนแนวแกน X และ Z ตัดกันเป็นตารางเมือง
+            const roadCoords = [-55, 0, 55];
+            roadCoords.forEach(pos => {
+                // ถนนแนวนอน
+                const roadX = new THREE.Mesh(new THREE.PlaneGeometry(230, 14), roadMat);
+                roadX.rotation.x = -Math.PI / 2;
+                roadX.position.set(0, 0.04, pos);
+                roadX.receiveShadow = true;
+                worldGroup.add(roadX);
+
+                // ถนนแนวตั้ง
+                const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(14, 230), roadMat);
+                roadZ.rotation.x = -Math.PI / 2;
+                roadZ.position.set(pos, 0.04, 0);
+                roadZ.receiveShadow = true;
+                worldGroup.add(roadZ);
+
+                // เส้นประสีขาว
+                for (let step = -105; step <= 105; step += 12) {
+                    const dashX = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.5), lineMat);
+                    dashX.rotation.x = -Math.PI / 2;
+                    dashX.position.set(step, 0.06, pos);
+                    worldGroup.add(dashX);
+
+                    const dashZ = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 5), lineMat);
+                    dashZ.rotation.x = -Math.PI / 2;
+                    dashZ.position.set(pos, 0.06, step);
+                    worldGroup.add(dashZ);
+                }
+            });
+
+            // วงเวียนดอกไม้ตรงกลางเมือง (0, 0)
+            const island = new THREE.Mesh(new THREE.CylinderGeometry(8, 8.5, 0.6, 24), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
+            island.position.set(0, 0.3, 0);
+            island.receiveShadow = true;
+            worldGroup.add(island);
+
+            const fountain = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, 1.4, 20), new THREE.MeshLambertMaterial({ color: 0x38bdf8 }));
+            fountain.position.set(0, 0.9, 0);
+            worldGroup.add(fountain);
+        }
+        buildRoads();
+
+        // สร้างเนินกระโดด 3D (Jump Ramps) ให้เด็กขับเหินเวหาสนุกๆ
+        const ramps = [
+            { x: 0, z: -28, rotY: 0 },
+            { x: 28, z: 55, rotY: Math.PI / 2 },
+            { x: -55, z: 28, rotY: 0 }
+        ];
+        ramps.forEach(r => {
+            const rampGroup = new THREE.Group();
+            rampGroup.position.set(r.x, 0, r.z);
+            rampGroup.rotation.y = r.rotY;
+
+            const rampGeo = new THREE.BoxGeometry(10, 2.2, 12);
+            const rampMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
+            const rampMesh = new THREE.Mesh(rampGeo, rampMat);
+            rampMesh.position.set(0, 0.6, 0);
+            rampMesh.rotation.x = -0.18;
+            rampMesh.castShadow = true;
+            rampMesh.receiveShadow = true;
+            rampGroup.add(rampMesh);
+
+            // แถบลูกศรสีแดงบนเนิน
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 2), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            stripe.position.set(0, 1.75, 0);
+            stripe.rotation.x = -0.18;
+            rampGroup.add(stripe);
+
+            worldGroup.add(rampGroup);
+        });
+
+        // สร้างซุ้มล้างรถฟองสบู่ 3D (Car Wash Arch) ที่พิกัด (-28, 0)
+        const washStationPos = new THREE.Vector3(-28, 0, 0);
+        const washBrushes = [];
+        function buildCarWash() {
+            const washGroup = new THREE.Group();
+            washGroup.position.copy(washStationPos);
+
+            const pillarMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
+            const archMat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
+
+            [-5.5, 5.5].forEach(px => {
+                const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 9, 6), pillarMat);
+                pillar.position.set(px, 4.5, 0);
+                pillar.castShadow = true;
+                washGroup.add(pillar);
+            });
+
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 7), archMat);
+            roof.position.set(0, 9.5, 0);
+            roof.castShadow = true;
+            washGroup.add(roof);
+
+            // แปรงล้างรถหมุนได้สีชมพูและเหลือง
+            [-3.8, 3.8].forEach((bx, i) => {
+                const brush = new THREE.Mesh(
+                    new THREE.CylinderGeometry(1.3, 1.3, 6.5, 16),
+                    new THREE.MeshLambertMaterial({ color: i === 0 ? 0xf472b6 : 0xfacc15 })
+                );
+                brush.position.set(bx, 4, 0);
+                washGroup.add(brush);
+                washBrushes.push(brush);
+            });
+
+            // แผ่นพื้นเรืองแสงสีฟ้า
+            const pad = new THREE.Mesh(
+                new THREE.PlaneGeometry(11, 12),
+                new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.6 })
+            );
+            pad.rotation.x = -Math.PI / 2;
+            pad.position.y = 0.08;
+            washGroup.add(pad);
+
+            worldGroup.add(washGroup);
+        }
+        buildCarWash();
+
+        // สร้างตึกบ้านเรือน ต้นไม้ และสิ่งกีดขวางชนกระเด็นได้ (กรวยจราจร / ลูกบอลยักษ์)
+        const colliders = []; // กล่องชนของตึก
+        const knockableProps = []; // กรวยจราจรและบอลชายหาดที่ชนกระเด็นได้
+
+        function createCartoonTree(x, z) {
+            const tree = new THREE.Group();
+            tree.position.set(x, 0, z);
+
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.7, 1.0, 4, 10),
+                new THREE.MeshLambertMaterial({ color: 0x92400e })
+            );
+            trunk.position.y = 2;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const foliageMat = new THREE.MeshLambertMaterial({ color: 0x16a34a });
+            const top1 = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2, 1), foliageMat);
+            top1.position.y = 5.5;
+            top1.castShadow = true;
+            tree.add(top1);
+
+            const top2 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.3, 1), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
+            top2.position.set(1.2, 7.2, 0.8);
+            tree.add(top2);
+
+            worldGroup.add(tree);
+            colliders.push({ x, z, r: 2.2 });
+        }
+
+        function createBuilding(x, z, w, h, d, colorHex) {
+            const bGroup = new THREE.Group();
+            bGroup.position.set(x, 0, z);
+
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(w, h, d),
+                new THREE.MeshLambertMaterial({ color: colorHex })
+            );
+            body.position.y = h / 2;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            bGroup.add(body);
+
+            // หลังคาสีสด
+            const roof = new THREE.Mesh(
+                new THREE.ConeGeometry(Math.max(w, d) * 0.72, 4.5, 4),
+                new THREE.MeshLambertMaterial({ color: 0xef4444 })
+            );
+            roof.position.y = h + 2.25;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            bGroup.add(roof);
+
+            // หน้าต่างสีเหลืองอบอุ่น
+            const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.55, h * 0.35, d + 0.3), winMat);
+            win.position.y = h * 0.55;
+            bGroup.add(win);
+
+            worldGroup.add(bGroup);
+            colliders.push({ x, z, r: Math.max(w, d) * 0.55 });
+        }
+
+        // จัดวางตึกและต้นไม้รอบเมือง (เว้นพื้นที่ทำภารกิจ 3 จุด)
+        const townBuildings = [
+            [-28, -28, 12, 14, 12, 0xfb923c],
+            [28, -28, 13, 16, 11, 0x38bdf8],
+            [-28, 28, 12, 12, 12, 0xa78bfa],
+            [28, 28, 14, 15, 12, 0xf472b6],
+            [-82, -28, 14, 18, 14, 0xfacc15],
+            [82, -28, 14, 14, 14, 0x4ade80],
+            [-82, 28, 14, 16, 14, 0xf87171],
+            [82, 28, 14, 15, 14, 0x60a5fa]
+        ];
+        townBuildings.forEach(b => createBuilding(...b));
+
+        // ต้นไม้ในสวนสาธารณะและริมทาง
+        [
+            [-18, -82], [0, -85], [18, -82],
+            [-85, -82], [-85, 82], [85, -82], [85, 82],
+            [-16, 16], [16, -16], [16, 16]
+        ].forEach(([tx, tz]) => createCartoonTree(tx, tz));
+
+        // สร้างกรวยจราจรและลูกบอลเด้งดึ๋งให้เด็กชนเล่นสนุกๆ
+        function spawnFunProps() {
+            const coneMat = new THREE.MeshLambertMaterial({ color: 0xf97316 });
+            const ballColors = [0xef4444, 0x3b82f6, 0xfacc15, 0xec4899];
+
+            for (let i = 0; i < 16; i++) {
+                const isBall = i % 2 === 0;
+                const mesh = isBall
+                    ? new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshLambertMaterial({ color: ballColors[i % 4] }))
+                    : new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.6, 12), coneMat);
+
+                const angle = (i / 16) * Math.PI * 2;
+                const dist = 22 + (i % 3) * 28;
+                mesh.position.set(Math.cos(angle) * dist, isBall ? 1.5 : 1.3, Math.sin(angle) * dist);
+                mesh.castShadow = true;
+                worldGroup.add(mesh);
+
+                knockableProps.push({
+                    mesh,
+                    vx: 0,
+                    vy: 0,
+                    vz: 0,
+                    baseY: isBall ? 1.5 : 1.3,
+                    isBall
+                });
+            }
+        }
+        spawnFunProps();
+
+        // สร้างดาวสีทองหมุนได้ 20 ดวงทั่วเมือง (เกิดใหม่ได้เรื่อยๆ)
+        const goldStars = [];
+        function createGoldStarMesh() {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.35 });
+            const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7, 0), mat);
+            core.scale.set(1, 1, 0.45);
+            group.add(core);
+            return group;
+        }
+
+        for (let i = 0; i < 20; i++) {
+            const starMesh = createGoldStarMesh();
+            const angle = (i / 20) * Math.PI * 2;
+            const radius = 16 + (i % 4) * 22;
+            starMesh.position.set(Math.cos(angle) * radius, 2.2, Math.sin(angle) * radius);
+            worldGroup.add(starMesh);
+            goldStars.push({ mesh: starMesh, active: true, respawnTimer: 0 });
+        }
+
+        /**
+         * 4. สร้างโมเดลรถกู้ภัย 3D ทั้ง 3 คัน + หมวกแต่งรถ 3D
+         */
+        const vehicleContainer = new THREE.Group();
+        scene.add(vehicleContainer);
+
+        const vehicleMeshes = {};
+        const wheelList = [];
+        const sirenMeshes = [];
+        let diggerArmGroup = null;
+        let waterNozzlePos = new THREE.Vector3(0, 3.2, 3.5);
+
+        function addCartoonEyesToVehicle(parent, x, y, z) {
+            const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+
+            [-0.75, 0.75].forEach(ex => {
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), eyeWhiteMat);
+                eye.scale.set(0.9, 1.15, 0.5);
+                eye.position.set(x + ex, y, z);
+                parent.add(eye);
+
+                const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), pupilMat);
+                pupil.position.set(x + ex, y, z + 0.16);
+                parent.add(pupil);
+            });
+        }
+
+        function createWheel3D(x, y, z) {
+            const wheelGroup = new THREE.Group();
+            wheelGroup.position.set(x, y, z);
+
+            const tire = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.15, 1.15, 0.85, 20),
+                new THREE.MeshLambertMaterial({ color: 0x1e293b })
+            );
+            tire.rotation.z = Math.PI / 2;
+            tire.castShadow = true;
+            wheelGroup.add(tire);
+
+            const hub = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.6, 0.6, 0.9, 14),
+                new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+            );
+            hub.rotation.z = Math.PI / 2;
+            wheelGroup.add(hub);
+
+            wheelList.push(wheelGroup);
+            return wheelGroup;
+        }
+
+        // 4.1 รถดับเพลิง 3D (Fire Truck)
+        function buildFireTruck3D() {
+            const g = new THREE.Group();
+            const redMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+
+            // ตัวรถ
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.5, 6.8), redMat);
+            body.position.set(0, 2.1, 0);
+            body.castShadow = true;
+            g.add(body);
+
+            // แถบขาวคาดข้าง
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.45, 6.9), whiteMat);
+            stripe.position.set(0, 1.8, 0);
+            g.add(stripe);
+
+            // กระจกหน้า & ตาการ์ตูน
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.2, 0.3), glassMat);
+            windshield.position.set(0, 2.6, 3.35);
+            g.add(windshield);
+            addCartoonEyesToVehicle(g, 0, 2.65, 3.45);
+
+            // บันไดสีเงินบนหลังคา
+            const ladder = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 4.6), new THREE.MeshLambertMaterial({ color: 0xcbd5e1 }));
+            ladder.position.set(0, 3.55, -0.6);
+            g.add(ladder);
+
+            // ปืนฉีดน้ำบนหลังคา
+            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.4, 12), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+            cannon.rotation.x = Math.PI / 3;
+            cannon.position.set(0, 3.8, 1.6);
+            g.add(cannon);
+
+            // ไฟไซเรน
+            const siren = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 0.6), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+            siren.position.set(0, 3.6, 2.6);
+            g.add(siren);
+            sirenMeshes.push({ mesh: siren, type: 'fire' });
+
+            // ล้อ 4 ล้อ
+            [[-1.7, 1.15, 2.1], [1.7, 1.15, 2.1], [-1.7, 1.15, -2.1], [1.7, 1.15, -2.1]].forEach(p => g.add(createWheel3D(...p)));
+
+            return g;
+        }
+
+        // 4.2 รถตักดิน 3D (Excavator)
+        function buildDigger3D() {
+            const g = new THREE.Group();
+            const yellowMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
+            const darkMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+
+            // ฐานรถ
+            const base = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.5, 5.4), yellowMat);
+            base.position.set(0, 1.6, -0.3);
+            base.castShadow = true;
+            g.add(base);
+
+            // ห้องคนขับ
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.1, 2.8), yellowMat);
+            cab.position.set(0, 3.2, -0.6);
+            cab.castShadow = true;
+            g.add(cab);
+
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.3), glassMat);
+            windshield.position.set(0, 3.3, 0.75);
+            g.add(windshield);
+            addCartoonEyesToVehicle(g, 0, 3.35, 0.85);
+
+            // แขนตักด้านหน้าขยับได้!
+            diggerArmGroup = new THREE.Group();
+            diggerArmGroup.position.set(0, 2.0, 1.8);
+
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 3.0), yellowMat);
+            armL.position.set(-1.3, 0.2, 1.3);
+            diggerArmGroup.add(armL);
+
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 3.0), yellowMat);
+            armR.position.set(1.3, 0.2, 1.3);
+            diggerArmGroup.add(armR);
+
+            // บุ้งกี๋ตักดินขนาดใหญ่
+            const bucket = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.4, 1.6), darkMat);
+            bucket.position.set(0, 0.1, 2.9);
+            bucket.rotation.x = 0.25;
+            bucket.castShadow = true;
+            diggerArmGroup.add(bucket);
+
+            g.add(diggerArmGroup);
+
+            // ไฟไซเรนสีส้ม
+            const siren = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.6, 12), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
+            siren.position.set(0, 4.5, -0.6);
+            g.add(siren);
+            sirenMeshes.push({ mesh: siren, type: 'digger' });
+
+            [[-1.7, 1.15, 1.6], [1.7, 1.15, 1.6], [-1.7, 1.15, -1.8], [1.7, 1.15, -1.8]].forEach(p => g.add(createWheel3D(...p)));
+            return g;
+        }
+
+        // 4.3 รถตำรวจ 3D (Police Car)
+        function buildPoliceCar3D() {
+            const g = new THREE.Group();
+            const blueMat = new THREE.MeshLambertMaterial({ color: 0x2563eb });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+
+            // ตัวรถส่วนล่างสีน้ำเงิน
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3.3, 1.5, 6.2), blueMat);
+            body.position.set(0, 1.6, 0);
+            body.castShadow = true;
+            g.add(body);
+
+            // ประตูสีขาว
+            const door = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.35, 2.8), whiteMat);
+            door.position.set(0, 1.6, 0);
+            g.add(door);
+
+            // หลังคาสีขาว
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.3, 3.2), whiteMat);
+            cabin.position.set(0, 2.9, -0.2);
+            cabin.castShadow = true;
+            g.add(cabin);
+
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.95, 0.3), glassMat);
+            windshield.position.set(0, 2.9, 1.35);
+            g.add(windshield);
+            addCartoonEyesToVehicle(g, 0, 2.95, 1.45);
+
+            // แถบไฟไซเรน แดง-น้ำเงิน
+            const siren = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.45, 0.55), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            siren.position.set(0, 3.75, -0.2);
+            g.add(siren);
+            sirenMeshes.push({ mesh: siren, type: 'police' });
+
+            [[-1.65, 1.15, 1.9], [1.65, 1.15, 1.9], [-1.65, 1.15, -1.9], [1.65, 1.15, -1.9]].forEach(p => g.add(createWheel3D(...p)));
+            return g;
+        }
+
+        vehicleMeshes.fire = buildFireTruck3D();
+        vehicleMeshes.digger = buildDigger3D();
+        vehicleMeshes.police = buildPoliceCar3D();
+
+        vehicleContainer.add(vehicleMeshes.fire);
+        vehicleContainer.add(vehicleMeshes.digger);
+        vehicleContainer.add(vehicleMeshes.police);
+
+        // 4.4 หมวกแต่งรถ 3D บนหลังคา (ปลดล็อกและสลับได้ด้วยปุ่มมงกุฎ!)
+        const hatGroup = new THREE.Group();
+        hatGroup.position.set(0, 4.1, 0);
+        vehicleContainer.add(hatGroup);
+
+        const hats = [];
+        // หมวก 0: ไม่มีหมวก
+        hats.push(new THREE.Group());
+
+        // หมวก 1: มงกุฎราชาสีทอง
+        const crown = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.1, 0.85, 1.1, 8),
+            new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.3 })
+        );
+        hats.push(crown);
+
+        // หมวก 2: ใบพัดเฮลิคอปเตอร์หมุนติ้ว
+        const propGroup = new THREE.Group();
+        const propCap = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 12), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+        const propBlade = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.15, 0.45), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+        propBlade.position.y = 0.75;
+        propGroup.add(propCap, propBlade);
+        hats.push(propGroup);
+
+        // หมวก 3: แผงหลังไดโนเสาร์สุดเท่
+        const dinoGroup = new THREE.Group();
+        [-1.2, 0, 1.2].forEach(dz => {
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.3, 4), new THREE.MeshLambertMaterial({ color: 0x22c55e }));
+            spike.position.set(0, 0.2, dz);
+            dinoGroup.add(spike);
+        });
+        hats.push(dinoGroup);
+
+        hats.forEach((h, i) => {
+            h.visible = (i === 0);
+            hatGroup.add(h);
+        });
+        let currentHatIndex = 0;
+
+        /**
+         * 5. สร้างภารกิจ 3D ทั้ง 3 จุดในเมือง + ลูกศรนำทาง 3D เหนือรถ
+         */
+        const missionZones = {
+            fire: { pos: new THREE.Vector3(55, 0, -55), hp: 100, maxHp: 100, active: true },
+            digger: { pos: new THREE.Vector3(-55, 0, 55), rocksLeft: 4, active: true },
+            police: { pos: new THREE.Vector3(55, 0, 55), spotsLeft: 3, active: true }
+        };
+
+        // วงแหวนแสงสีทองบอกจุดทำภารกิจบนพื้น
+        const beaconMeshes = {};
+        Object.keys(missionZones).forEach(key => {
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(6.5, 8.5, 32),
+                new THREE.MeshBasicMaterial({
+                    color: key === 'fire' ? 0xef4444 : (key === 'digger' ? 0xfacc15 : 0x3b82f6),
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.85
+                })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(missionZones[key].pos.x, 0.12, missionZones[key].pos.z);
+            worldGroup.add(ring);
+            beaconMeshes[key] = ring;
+        });
+
+        // 5.1 ฉากภารกิจไฟไหม้ 3D (55, 0, -55)
+        const fireFlames3D = [];
+        const burningHouse = new THREE.Group();
+        burningHouse.position.set(55, 0, -68);
+        const bHouseBody = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 10), new THREE.MeshLambertMaterial({ color: 0xfb923c }));
+        bHouseBody.position.y = 7;
+        bHouseBody.castShadow = true;
+        burningHouse.add(bHouseBody);
+        const bHouseRoof = new THREE.Mesh(new THREE.ConeGeometry(11, 5, 4), new THREE.MeshLambertMaterial({ color: 0xb91c1c }));
+        bHouseRoof.position.y = 16.5;
+        bHouseRoof.rotation.y = Math.PI / 4;
+        burningHouse.add(bHouseRoof);
+        worldGroup.add(burningHouse);
+
+        // เปลวไฟ 3D 5 กองหน้าบ้าน
+        for (let i = 0; i < 5; i++) {
+            const flame = new THREE.Mesh(
+                new THREE.ConeGeometry(1.5, 3.8, 8),
+                new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xef4444 : 0xfacc15 })
+            );
+            flame.position.set(50 + i * 2.5, 3 + (i % 2) * 3.5, -62.5);
+            worldGroup.add(flame);
+            fireFlames3D.push(flame);
+        }
+
+        // 5.2 ฉากภารกิจก้อนหินถล่ม 3D (-55, 0, 55)
+        const boulders3D = [];
+        const rockMat = new THREE.MeshLambertMaterial({ color: 0x78716c });
+        [
+            [-58, 2.2, 55],
+            [-52, 2.0, 55],
+            [-55, 4.5, 55],
+            [-55, 2.1, 59]
+        ].forEach(([rx, ry, rz]) => {
+            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.3, 0), rockMat);
+            rock.position.set(rx, ry, rz);
+            rock.castShadow = true;
+            worldGroup.add(rock);
+            boulders3D.push({ mesh: rock, basePos: new THREE.Vector3(rx, ry, rz), cleared: false, flyVy: 0 });
+        });
+
+        // 5.3 ฉากภารกิจรถตำรวจตามหาลูกแมว 3D รอบสวน (55, 0, 55)
+        const hidingSpots3D = [];
+        const kittenGroup = new THREE.Group();
+        const catHead = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 14), new THREE.MeshLambertMaterial({ color: 0xfde047 }));
+        catHead.position.y = 1.2;
+        const earL = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 4), new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
+        earL.position.set(-0.6, 2.1, 0);
+        const earR = earL.clone();
+        earR.position.x = 0.6;
+        kittenGroup.add(catHead, earL, earR);
+        kittenGroup.visible = false;
+        worldGroup.add(kittenGroup);
+
+        [
+            [45, 48, 0x22c55e], // พุ่มไม้ 1
+            [65, 52, 0xd97706], // กล่องลัง 2
+            [52, 66, 0x16a34a]  // พุ่มไม้ 3
+        ].forEach(([hx, hz, col], idx) => {
+            const spotMesh = new THREE.Mesh(
+                idx === 1 ? new THREE.BoxGeometry(3.2, 3.2, 3.2) : new THREE.DodecahedronGeometry(2.4, 1),
+                new THREE.MeshLambertMaterial({ color: col })
+            );
+            spotMesh.position.set(hx, 1.8, hz);
+            spotMesh.castShadow = true;
+            worldGroup.add(spotMesh);
+            hidingSpots3D.push({ mesh: spotMesh, pos: new THREE.Vector3(hx, 1.8, hz), found: false, hasCat: idx === 2 });
+        });
+
+        // ลูกศรนำทาง 3D ลอยเหนือรถชี้ไปยังภารกิจของรถคันที่เลือก
+        const guideArrowGroup = new THREE.Group();
+        const arrowShaft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 1.8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.4, 4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        arrowHead.rotation.x = Math.PI / 2;
+        arrowHead.position.z = 1.4;
+        guideArrowGroup.add(arrowShaft, arrowHead);
+        guideArrowGroup.position.set(0, 6.2, 0);
+        vehicleContainer.add(guideArrowGroup);
+
+        /**
+         * 6. ระบบอนุภาค 3D (น้ำฉีดดับไฟ, ฟองสบู่ล้างรถ, พลุกระดาษฉลอง)
+         */
+        const particles3D = [];
+        function spawnParticle3D(pos, vel, colorHex, size = 0.45, life = 40) {
+            const pMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(size, 8, 8),
+                new THREE.MeshBasicMaterial({ color: colorHex })
+            );
+            pMesh.position.copy(pos);
+            worldGroup.add(pMesh);
+            particles3D.push({ mesh: pMesh, vel, life, maxLife: life });
+        }
+
+        function spawnConfettiBurst(centerPos) {
+            const colors = [0xef4444, 0xfacc15, 0x3b82f6, 0x22c55e, 0xec4899, 0xa855f7];
+            for (let i = 0; i < 45; i++) {
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.9,
+                    0.4 + Math.random() * 0.8,
+                    (Math.random() - 0.5) * 0.9
+                );
+                spawnParticle3D(
+                    centerPos.clone().add(new THREE.Vector3(0, 3, 0)),
+                    vel,
+                    colors[i % colors.length],
+                    0.4,
+                    70
+                );
+            }
+        }
+
+        /**
+         * 7. ตัวแปรสถานะการขับรถและการควบคุม
+         */
+        let currentVehicle = 'fire';
+        let starCount = 0;
+        let cameraMode = 0; // 0 = ตามหลังมุมสูงกำลังดี, 1 = ซูมใกล้สุดมันส์, 2 = มุมมองนก
+        const carState = {
+            pos: new THREE.Vector3(0, 0, 18),
+            rotY: Math.PI, // หันหน้าเข้าหาวงเวียน
+            speed: 0,
+            vy: 0,
+            isGrounded: true,
+            boostTimer: 0,
+            digAnim: 0
+        };
+
+        const inputState = {
+            gas: false,
+            reverse: false,
+            left: false,
+            right: false,
+            action: false
+        };
+
+        // ฟังก์ชันสลับรถกู้ภัยได้ตลอดเวลา
+        function selectVehicle(type) {
+            currentVehicle = type;
+            sfx.playHorn(type);
+
+            vehicleMeshes.fire.visible = (type === 'fire');
+            vehicleMeshes.digger.visible = (type === 'digger');
+            vehicleMeshes.police.visible = (type === 'police');
+
+            // อัปเดต UI แถบเลือกรถ
+            document.querySelectorAll('.vehicle-tab').forEach(btn => {
+                const isSelected = btn.dataset.vehicle === type;
+                btn.classList.toggle('border-yellow-300', isSelected);
+                btn.classList.toggle('border-white', !isSelected);
+                btn.classList.toggle('scale-110', isSelected);
+                btn.classList.toggle('opacity-80', !isSelected);
+            });
+
+            // เปลี่ยนไอคอนปุ่มแอ็กชันตรงกลางตามรถที่เลือก
+            const actionBtn = document.getElementById('btn-action');
+            if (type === 'fire') {
+                actionBtn.textContent = '💦';
+                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-sky-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
+            } else if (type === 'digger') {
+                actionBtn.textContent = '⛏️';
+                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-amber-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
+            } else {
+                actionBtn.textContent = '🔍';
+                actionBtn.className = 'toy-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-indigo-500 border-4 border-yellow-300 flex items-center justify-center text-4xl sm:text-5xl animate-pulse-glow';
+            }
+        }
+
+        // รีเซ็ตภารกิจใหม่เมื่อทำสำเร็จเพื่อให้เด็กเล่นซ้ำได้เรื่อยๆ
+        function resetMission(type) {
+            if (type === 'fire') {
+                missionZones.fire.hp = 100;
+                fireFlames3D.forEach(f => { f.visible = true; f.scale.set(1, 1, 1); });
+            } else if (type === 'digger') {
+                missionZones.digger.rocksLeft = 4;
+                boulders3D.forEach(b => {
+                    b.cleared = false;
+                    b.flyVy = 0;
+                    b.mesh.visible = true;
+                    b.mesh.position.copy(b.basePos);
+                });
+            } else if (type === 'police') {
+                missionZones.police.spotsLeft = 3;
+                kittenGroup.visible = false;
+                hidingSpots3D.forEach(s => {
+                    s.found = false;
+                    s.mesh.visible = true;
+                    s.mesh.scale.set(1, 1, 1);
+                });
+            }
+        }
+
+        // ฟังก์ชันกดปุ่มแอ็กชันพิเศษ (ฉีดน้ำ / ตักหิน / หาลูกแมว / เทอร์โบ)
+        function triggerVehicleAction() {
+            const zone = missionZones[currentVehicle];
+            const distToZone = carState.pos.distanceTo(zone.pos);
+
+            if (currentVehicle === 'fire') {
+                // ฉีดน้ำจากปืนฉีดน้ำบนหลังคา!
+                if (Math.random() < 0.35) sfx.playWater();
+                const forward = new THREE.Vector3(Math.sin(carState.rotY), 0, Math.cos(carState.rotY));
+                const muzzle = carState.pos.clone().add(new THREE.Vector3(0, 3.8, 0)).add(forward.clone().multiplyScalar(2));
+
+                for (let i = 0; i < 3; i++) {
+                    const vel = forward.clone().multiplyScalar(0.85 + Math.random() * 0.25);
+                    vel.y = 0.28 + Math.random() * 0.12;
+                    vel.x += (Math.random() - 0.5) * 0.15;
+                    vel.z += (Math.random() - 0.5) * 0.15;
+                    spawnParticle3D(muzzle, vel, 0x38bdf8, 0.38, 28);
+                }
+
+                // ถ้าอยู่ใกล้บ้านไฟไหม้ ไฟจะค่อยๆ ดับ!
+                if (distToZone < 22 && zone.hp > 0) {
+                    zone.hp = Math.max(0, zone.hp - 2.2);
+                    const ratio = zone.hp / zone.maxHp;
+                    fireFlames3D.forEach((f, idx) => {
+                        const threshold = (idx + 1) / fireFlames3D.length;
+                        if (ratio < threshold - 0.2) {
+                            f.visible = false;
+                        } else {
+                            const s = Math.max(0.2, ratio);
+                            f.scale.set(s, s, s);
+                        }
+                    });
+
+                    if (zone.hp === 0) {
+                        starCount += 5;
+                        updateStarUI();
+                        sfx.playCelebration();
+                        spawnConfettiBurst(zone.pos);
+                        setTimeout(() => resetMission('fire'), 4000);
+                    }
+                }
+
+            } else if (currentVehicle === 'digger') {
+                // ขยับแขนตักดินขึ้นลง
+                if (carState.digAnim <= 0) {
+                    carState.digAnim = 1.0;
+                    sfx.playScoop();
+
+                    // ถ้าอยู่ใกล้กองหิน ตักหินกระเด็นออกทีละก้อน!
+                    if (distToZone < 22) {
+                        const rock = boulders3D.find(b => !b.cleared);
+                        if (rock) {
+                            rock.cleared = true;
+                            rock.flyVy = 0.95;
+                            missionZones.digger.rocksLeft--;
+                            if (missionZones.digger.rocksLeft === 0) {
+                                starCount += 5;
+                                updateStarUI();
+                                sfx.playCelebration();
+                                spawnConfettiBurst(zone.pos);
+                                setTimeout(() => resetMission('digger'), 4000);
+                            }
+                        }
+                    } else {
+                        // ถ้าไม่ได้อยู่จุดภารกิจ ให้พุ่งเทอร์โบ!
+                        carState.boostTimer = 35;
+                        sfx.playJump();
+                    }
+                }
+
+            } else if (currentVehicle === 'police') {
+                // เปิดไซเรนค้นหาลูกแมวรอบจุดภารกิจ
+                sfx.playHorn('police');
+                if (distToZone < 24) {
+                    let foundAny = false;
+                    hidingSpots3D.forEach(spot => {
+                        if (!spot.found && carState.pos.distanceTo(spot.pos) < 15) {
+                            spot.found = true;
+                            spot.mesh.visible = false;
+                            foundAny = true;
+                            if (spot.hasCat) {
+                                kittenGroup.position.set(spot.pos.x, 0, spot.pos.z);
+                                kittenGroup.visible = true;
+                                sfx.playMeow();
+                                starCount += 5;
+                                updateStarUI();
+                                sfx.playCelebration();
+                                spawnConfettiBurst(spot.pos);
+                                setTimeout(() => resetMission('police'), 4000);
+                            } else {
+                                sfx.playTap();
+                                spawnParticle3D(spot.pos, new THREE.Vector3(0, 0.3, 0), 0xffffff, 0.8, 25);
+                            }
+                        }
+                    });
+                    if (!foundAny) carState.boostTimer = 35;
+                } else {
+                    carState.boostTimer = 35;
+                    sfx.playJump();
+                }
+            }
+        }
+
+        function updateStarUI() {
+            document.getElementById('star-count').textContent = starCount;
+        }
+
+        /**
+         * 8. ผูกปุ่มควบคุมหน้าจอสัมผัส (Touch) และคีย์บอร์ด
+         */
+        function bindHoldButton(btnId, onDown, onUp) {
+            const btn = document.getElementById(btnId);
+            const start = e => {
+                e.preventDefault();
+                sfx.init();
+                btn.classList.add('pressed');
+                onDown();
             };
-
-            let electrical = isTransformer ? [
-                { name: "Insulation Resistance (HV-LV)", value: status === "Critical" ? "420 MΩ" : status === "Warning" ? "880 MΩ" : "5,420 MΩ", criteria: "> 1,000 MΩ", pass: status === "Normal" },
-                { name: "Tan Delta (Dissipation Factor)", value: status === "Critical" ? "0.85 %" : status === "Warning" ? "0.58 %" : "0.35 %", criteria: "< 0.5%", pass: status !== "Critical" },
-                { name: "Winding Resistance (HV)", value: status === "Critical" ? "0.512 Ω" : "0.452 Ω", criteria: "Diff < 2%", pass: status !== "Critical" },
-                { name: "Turns Ratio Error", value: "0.05 %", criteria: "Within ± 0.5%", pass: true }
-            ] : [
-                { name: "Contact Resistance (Main Bus)", value: status === "Critical" ? "85 µΩ" : status === "Warning" ? "58 µΩ" : "32 µΩ", criteria: "< 50 µΩ", pass: status === "Normal" },
-                { name: "SF6 Gas Pressure", value: status === "Critical" ? "0.48 MPa" : status === "Warning" ? "0.53 MPa" : "0.62 MPa", criteria: "> 0.55 MPa", pass: status !== "Critical" },
-                { name: "SF6 Moisture Content", value: status === "Critical" ? "210 ppmV" : "110 ppmV", criteria: "< 150 ppmV", pass: status === "Normal" },
-                { name: "Operating Time (Trip/Close)", value: status === "Critical" ? "52 ms" : "38 ms", criteria: "< 45 ms", pass: status !== "Critical" }
-            ];
-
-            assetsData.push({
-                id: code, type: type, location: locations[Math.floor(Math.random() * locations.length)],
-                healthIndex: parseFloat(healthIndex), rpn: rpn,
-                lastPm: `2025-10-${String((i % 28) + 1).padStart(2, '0')}`,
-                nextPm: `2026-${String((i % 12) + 1).padStart(2, '0')}-15`,
-                status: status, statusClass: statusClass, gases: gases, electrical: electrical,
-                labFileName: i === 1 ? "DGA_Lab_Report_TR-01.pdf" : null,
-                photoFileName: i === 1 ? "Thermal_Hotspot_TR-01.jpg" : null
-            });
-
-            fmeaData.push({
-                assetId: code, type: type,
-                mode: type === 'Transformer' ? (status === 'Critical' ? "Winding Insulation Breakdown" : "Bushing Tracking") : (status === 'Critical' ? "SF6 Gas Pressure Loss" : "Contact Resistance High"),
-                effect: status === 'Critical' ? "Catastrophic failure" : "Minor deviation",
-                cause: status === 'Critical' ? "Thermal & electrical stress" : "Normal operation wear",
-                s: s, o: o, d: d,
-                action: type === 'Transformer' ? "Perform DGA & Tan Delta test" : "Perform SF6 & contact test"
+            const end = e => {
+                e.preventDefault();
+                btn.classList.remove('pressed');
+                if (onUp) onUp();
+            };
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', end, { passive: false });
+            btn.addEventListener('touchcancel', end, { passive: false });
+            btn.addEventListener('mousedown', start);
+            window.addEventListener('mouseup', () => {
+                btn.classList.remove('pressed');
+                if (onUp) onUp();
             });
         }
 
-        assetsData.sort((a, b) => b.rpn - a.rpn);
-        fmeaData.sort((a, b) => (b.s * b.o * b.d) - (a.s * a.o * a.d));
+        bindHoldButton('btn-gas', () => { inputState.gas = true; }, () => { inputState.gas = false; });
+        bindHoldButton('btn-reverse', () => { inputState.reverse = true; }, () => { inputState.reverse = false; });
+        bindHoldButton('btn-left', () => { inputState.left = true; }, () => { inputState.left = false; });
+        bindHoldButton('btn-right', () => { inputState.right = true; }, () => { inputState.right = false; });
+        bindHoldButton('btn-action', () => {
+            inputState.action = true;
+            triggerVehicleAction();
+        }, () => {
+            inputState.action = false;
+        });
 
-        document.getElementById('stat-normal').innerText = statCounts.normal;
-        document.getElementById('stat-warning').innerText = statCounts.warning;
-        document.getElementById('stat-critical').innerText = statCounts.critical;
-
-        let currentPage = 1;
-        const rowsPerPage = 10;
-        let filteredData = [...assetsData];
-
-        function switchTab(tabId) {
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(el => el.classList.add('hidden'));
-
-            const buttons = document.querySelectorAll('.tab-btn');
-            buttons.forEach(btn => {
-                btn.className = "tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap";
-            });
-
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.getElementById(`tab-btn-${tabId}`).className = "tab-btn py-3 px-4 sm:px-5 border-b-2 font-medium text-xs sm:text-sm transition-all border-industrial-500 text-industrial-500 flex items-center space-x-2 whitespace-nowrap";
-
-            if (tabId === 'dga-calc') {
-                initDgaDropdown('dga-device-select');
-            } else if (tabId === 'device-analysis') {
-                initAnalysisDropdown();
-            } else if (tabId === 'fmea-calc') {
-                initFmeaFilter();
-                renderFmeaTable();
+        // ปุ่มแตร
+        document.getElementById('btn-horn').addEventListener('pointerdown', e => {
+            e.preventDefault();
+            sfx.playHorn(currentVehicle);
+            // รถกระโดดดึ๋งน่ารักเวลาบีบแตร!
+            if (carState.isGrounded) {
+                carState.vy = 0.25;
+                carState.isGrounded = false;
             }
-        }
+        });
 
-        function openStandardModal() { document.getElementById('standard-modal').classList.remove('hidden'); }
-        function closeStandardModal() { document.getElementById('standard-modal').classList.add('hidden'); }
+        // แถบเลือกรถ 3 คันด้านบน
+        document.querySelectorAll('.vehicle-tab').forEach(btn => {
+            btn.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                selectVehicle(btn.dataset.vehicle);
+            });
+        });
 
-        function openPreviewModal(type, filename) {
-            document.getElementById('preview-title').innerText = `ตัวอย่างไฟล์: ${filename}`;
-            const content = document.getElementById('preview-content');
-            if(type === 'pdf') {
-                content.innerHTML = `<div class="space-y-3"><i class="fa-solid fa-file-pdf text-rose-500 text-4xl"></i><p class="font-bold">รายงานผลตรวจวิเคราะห์ห้องแล็บ (DGA & Electrical Lab Report)</p><p class="text-xs text-slate-400">สถานะ: อนุมัติโดยหัวหน้าฝ่ายวิศวกรรม</p><div class="bg-slate-950 p-3 rounded border border-slate-800 text-left font-mono text-xs text-emerald-400">[Lab Verified Report] Status: Normal / Exceeded</div></div>`;
+        // ปุ่มเปลี่ยนมุมกล้อง
+        document.getElementById('btn-camera').addEventListener('pointerdown', e => {
+            e.preventDefault();
+            sfx.playTap();
+            cameraMode = (cameraMode + 1) % 3;
+        });
+
+        // ปุ่มเข็มทิศวาร์ปไปใกล้จุดภารกิจของรถคันปัจจุบันทันที (ช่วยให้เด็ก 4 ขวบไม่หลงทาง)
+        document.getElementById('btn-mission-warp').addEventListener('pointerdown', e => {
+            e.preventDefault();
+            sfx.playJump();
+            const target = missionZones[currentVehicle].pos;
+            carState.pos.set(target.x, 0, target.z - 14);
+            carState.rotY = 0;
+            carState.speed = 0;
+            spawnConfettiBurst(carState.pos);
+        });
+
+        // ปุ่มแต่งหมวกรถ 3D บนหลังคา + เปลี่ยนโทนเสียงแตร
+        document.getElementById('btn-hat').addEventListener('pointerdown', e => {
+            e.preventDefault();
+            sfx.playStar();
+            hats[currentHatIndex].visible = false;
+            currentHatIndex = (currentHatIndex + 1) % hats.length;
+            hats[currentHatIndex].visible = true;
+            sfx.hornPitchShift = 0.85 + currentHatIndex * 0.15;
+            document.getElementById('hat-badge').textContent = currentHatIndex;
+            spawnConfettiBurst(carState.pos);
+        });
+
+        // ปุ่มตั้งค่า Parental Gate (ต้องกดค้าง 3 วินาทีเพื่อรีเซ็ตตำแหน่งรถกลับจุดเริ่มต้น)
+        let settingsHold = 0;
+        let holdingSettings = false;
+        const settingsBtn = document.getElementById('btn-settings');
+        const settingsRing = document.getElementById('settings-ring');
+
+        settingsBtn.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            holdingSettings = true;
+        });
+        window.addEventListener('pointerup', () => {
+            holdingSettings = false;
+            settingsHold = 0;
+            settingsRing.style.strokeDashoffset = 176;
+        });
+
+        // รองรับคีย์บอร์ด (Arrow Keys / WASD / Space) สำหรับทดสอบบนคอมพิวเตอร์
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputState.gas = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') inputState.reverse = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputState.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputState.right = true;
+            if (e.key === ' ') {
+                inputState.action = true;
+                triggerVehicleAction();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') inputState.gas = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') inputState.reverse = false;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') inputState.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') inputState.right = false;
+            if (e.key === ' ') inputState.action = false;
+        });
+
+        /**
+         * 9. ลูปอัปเดตฟิสิกส์และเรนเดอร์ 3D (60 FPS)
+         */
+        let clockTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            clockTime += 0.016;
+
+            // 9.1 อัปเดตวงแหวน Parental Gate
+            if (holdingSettings) {
+                settingsHold += 0.016;
+                const ratio = Math.min(1, settingsHold / 3.0);
+                settingsRing.style.strokeDashoffset = 176 * (1 - ratio);
+                if (ratio >= 1) {
+                    holdingSettings = false;
+                    settingsHold = 0;
+                    settingsRing.style.strokeDashoffset = 176;
+                    carState.pos.set(0, 0, 18);
+                    carState.rotY = Math.PI;
+                    carState.speed = 0;
+                    sfx.playCelebration();
+                }
+            }
+
+            // 9.2 ฟิสิกส์การขับรถ
+            const maxSpeed = carState.boostTimer > 0 ? 0.95 : 0.58;
+            if (carState.boostTimer > 0) carState.boostTimer--;
+
+            if (inputState.gas || carState.boostTimer > 0) {
+                carState.speed = Math.min(maxSpeed, carState.speed + 0.025);
+            } else if (inputState.reverse) {
+                carState.speed = Math.max(-0.35, carState.speed - 0.025);
             } else {
-                content.innerHTML = `<div class="space-y-3"><i class="fa-solid fa-image text-emerald-400 text-4xl"></i><p class="font-bold">ภาพถ่ายจุดความเสียหาย (Thermal Scan / Visual Inspection)</p><div class="bg-industrial-900/40 p-4 rounded-xl border border-industrial-600/50 text-industrial-300 text-xs">📸 [บันทึกภาพถ่ายหน้างาน]: ตรวจสอบสภาพขั้วต่อและฉนวนปกติ</div></div>`;
-            }
-            document.getElementById('preview-modal').classList.remove('hidden');
-        }
-        function closePreviewModal() { document.getElementById('preview-modal').classList.add('hidden'); }
-
-        function simulateSampleAttachment() {
-            const id = document.getElementById('analysis-device-select').value;
-            const asset = assetsData.find(a => a.id === id);
-            if (!asset) return;
-            asset.labFileName = `Lab_Report_${asset.id}.pdf`;
-            asset.photoFileName = `Inspection_${asset.id}.jpg`;
-            onAnalysisDeviceChange();
-            alert(`จำลองการแนบไฟล์สำหรับ ${asset.id} สำเร็จ!`);
-        }
-
-        // --- EXPORT HUB FUNCTIONS ---
-        function downloadExcelCsv() {
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "รหัสอุปกรณ์,ประเภท,สถานีไฟฟ้า (Location),Health Index (%),ค่า RPN,PM รอบถัดไป,สถานะความเสี่ยง\n";
-            assetsData.forEach(row => {
-                csvContent += `"${row.id}","${row.type}","${row.location}",${row.healthIndex},${row.rpn},"${row.nextPm}","${row.status}"\n`;
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "RCM_Master_PM_Schedule_40_Assets.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function printNativePdf() {
-            window.print();
-        }
-
-        function downloadJsonData() {
-            const exportBundle = { system: "RCM Transformer & GIS", totalAssets: assetsData.length, assets: assetsData, fmea: fmeaData, exportDate: new Date().toISOString() };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportBundle, null, 2));
-            const link = document.createElement("a");
-            link.setAttribute("href", dataStr);
-            link.setAttribute("download", "RCM_Full_System_Backup.json");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('pm-table-body');
-            tbody.innerHTML = "";
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageItems = filteredData.slice(start, end);
-
-            pageItems.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-700/35 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-semibold text-white">${item.id}</td>
-                    <td class="py-3 px-4"><span class="px-2 py-0.5 bg-slate-900 rounded text-xs text-slate-300 border border-slate-700">${item.type}</span></td>
-                    <td class="py-3 px-4 text-slate-300 text-xs">${item.location}</td>
-                    <td class="py-3 px-4"><span class="font-bold ${item.healthIndex < 75 ? 'text-rose-400' : item.healthIndex < 85 ? 'text-amber-400' : 'text-emerald-400'}">${item.healthIndex}%</span></td>
-                    <td class="py-3 px-4 font-mono font-bold text-industrial-400">${item.rpn}</td>
-                    <td class="py-3 px-4 text-slate-200 text-xs">${item.nextPm}</td>
-                    <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${item.statusClass}">${item.status}</span></td>
-                    <td class="py-3 px-4 text-center no-print">
-                        <button onclick="openModal('${item.id}')" class="bg-industrial-600 hover:bg-industrial-700 text-white px-2.5 py-1 rounded text-xs font-medium transition inline-flex items-center space-x-1">
-                            <i class="fa-solid fa-eye"></i><span>ผลทดสอบ</span>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('pagination-info').innerText = `แสดง ${start + 1} ถึง ${Math.min(end, filteredData.length)} จากทั้งหมด ${filteredData.length} รายการ`;
-            renderPaginationControls();
-        }
-
-        function renderPaginationControls() {
-            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-            const container = document.getElementById('pagination-controls');
-            container.innerHTML = "";
-            for (let i = 1; i <= totalPages; i++) {
-                const btn = document.createElement('button');
-                btn.innerText = i;
-                btn.className = `px-2.5 py-1 rounded text-xs font-medium transition ${currentPage === i ? 'bg-industrial-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'}`;
-                btn.onclick = () => { currentPage = i; renderTable(); };
-                container.appendChild(btn);
-            }
-        }
-
-        function filterTable() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            filteredData = assetsData.filter(item => item.id.toLowerCase().includes(query) || item.location.toLowerCase().includes(query));
-            currentPage = 1;
-            renderTable();
-        }
-
-        function populateSortedDropdown(selectElement) {
-            selectElement.innerHTML = "";
-            const sortedAssets = [...assetsData].sort((a, b) => {
-                if (a.type !== b.type) return a.type.localeCompare(b.type);
-                return a.id.localeCompare(b.id, undefined, {numeric: true});
-            });
-            sortedAssets.forEach(asset => {
-                const opt = document.createElement('option');
-                opt.value = asset.id;
-                opt.innerText = `${asset.id} (${asset.type}) - RPN:${asset.rpn}`;
-                selectElement.appendChild(opt);
-            });
-        }
-
-        function initFmeaFilter() {
-            const select = document.getElementById('fmea-filter-select');
-            if (select.children.length <= 1) {
-                const sortedAssets = [...assetsData].sort((a, b) => {
-                    if (a.type !== b.type) return a.type.localeCompare(b.type);
-                    return a.id.localeCompare(b.id, undefined, {numeric: true});
-                });
-                sortedAssets.forEach(asset => {
-                    const opt = document.createElement('option');
-                    opt.value = asset.id;
-                    opt.innerText = `${asset.id} (${asset.type})`;
-                    select.appendChild(opt);
-                });
-            }
-        }
-
-        function renderFmeaTable() {
-            const filterVal = document.getElementById('fmea-filter-select').value;
-            const tbody = document.getElementById('fmea-table-body');
-            tbody.innerHTML = "";
-
-            let displayList = filterVal === "ALL" ? [...fmeaData] : fmeaData.filter(item => item.assetId === filterVal);
-            if (filterVal === "ALL") {
-                displayList.sort((a, b) => (b.s * b.o * b.d) - (a.s * a.o * a.d));
+                carState.speed *= 0.92;
+                if (Math.abs(carState.speed) < 0.005) carState.speed = 0;
             }
 
-            displayList.forEach(item => {
-                const rpn = item.s * item.o * item.d;
-                let rpnBadge = rpn >= 300 ? "bg-rose-500/10 text-rose-400 border-rose-500/30 font-bold" : rpn >= 100 ? "bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold";
+            sfx.updateEngine(Math.abs(carState.speed) / 0.6);
 
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-700/20">
-                        <td class="py-3 px-3 font-semibold text-industrial-400">${item.assetId} <span class="text-[10px] text-slate-400 block font-normal">(${item.type})</span></td>
-                        <td class="py-3 px-3 text-slate-200">${item.mode}</td>
-                        <td class="py-3 px-3 text-slate-300">${item.effect}</td>
-                        <td class="py-3 px-3 text-slate-400">${item.cause}</td>
-                        <td class="py-3 px-3 text-center font-mono">${item.s}</td>
-                        <td class="py-3 px-3 text-center font-mono">${item.o}</td>
-                        <td class="py-3 px-3 text-center font-mono">${item.d}</td>
-                        <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded border ${rpnBadge}">${rpn}</span></td>
-                        <td class="py-3 px-3 text-slate-300 text-xs">${item.action}</td>
-                    </tr>
-                `;
-            });
-            document.getElementById('fmea-count').innerText = `แสดง ${displayList.length} รายการ`;
-        }
+            // เลี้ยวซ้าย-ขวา (หมุนได้แม้จอดนิ่งเพื่อให้เด็ก 4 ขวบหมุนหันทิศง่ายๆ)
+            const turnSpeed = 0.042;
+            if (inputState.left) carState.rotY += turnSpeed;
+            if (inputState.right) carState.rotY -= turnSpeed;
 
-        function initAnalysisDropdown() {
-            const select = document.getElementById('analysis-device-select');
-            populateSortedDropdown(select);
-            onAnalysisDeviceChange();
-        }
+            // เคลื่อนที่ไปข้างหน้าตามมุมรถ
+            const nextX = carState.pos.x + Math.sin(carState.rotY) * carState.speed;
+            const nextZ = carState.pos.z + Math.cos(carState.rotY) * carState.speed;
 
-        function onAnalysisDeviceChange() {
-            const id = document.getElementById('analysis-device-select').value;
-            const asset = assetsData.find(a => a.id === id);
-            if (!asset) return;
-
-            document.getElementById('ana-id').innerText = asset.id;
-            document.getElementById('ana-type').innerText = asset.type;
-            document.getElementById('ana-hi').innerText = asset.healthIndex + '%';
-            document.getElementById('ana-rpn').innerText = asset.rpn;
-            const st = document.getElementById('ana-status');
-            st.innerText = asset.status;
-            st.className = `px-2 py-0.5 rounded font-bold border ${asset.statusClass}`;
-            document.getElementById('ana-lastpm').innerText = asset.lastPm;
-            document.getElementById('ana-nextpm').innerText = asset.nextPm;
-
-            const linkedFmea = fmeaData.find(f => f.assetId === asset.id);
-            let tdcg = asset.gases.h2 + asset.gases.ch4 + asset.gases.c2h2 + asset.gases.c2h4 + asset.gases.c2h6 + asset.gases.co;
-            
-            document.getElementById('ana-rationale').innerHTML = `อุปกรณ์ <b>${asset.id}</b> วิเคราะห์ความเสียหายผ่าน FMEA หัวข้อ <span class="text-industrial-400 font-bold">${linkedFmea.mode}</span> คะแนนความเสี่ยง S=${linkedFmea.s}, O=${linkedFmea.o}, D=${linkedFmea.d} ส่งผลให้ได้ค่า RPN = <b>${asset.rpn}</b> ตรวจวัดก๊าซ TDCG รวมเท่ากับ ${tdcg} ppm`;
-
-            document.getElementById('new-h2').value = asset.gases.h2;
-            document.getElementById('new-ch4').value = asset.gases.ch4;
-            document.getElementById('new-c2h2').value = asset.gases.c2h2;
-            document.getElementById('new-c2h4').value = asset.gases.c2h4;
-            document.getElementById('new-c2h6').value = asset.gases.c2h6;
-            document.getElementById('new-co').value = asset.gases.co;
-            document.getElementById('new-co2').value = asset.gases.co2;
-
-            document.getElementById('new-s').value = linkedFmea.s;
-            document.getElementById('new-o').value = linkedFmea.o;
-            document.getElementById('new-d').value = linkedFmea.d;
-            document.getElementById('new-rpn').value = asset.rpn;
-
-            const attachBox = document.getElementById('attached-files-container');
-            let attachHtml = "";
-            if(asset.labFileName) {
-                attachHtml += `<div class="text-rose-400"><i class="fa-solid fa-file-pdf mr-1"></i> <a href="#" onclick="openPreviewModal('pdf', '${asset.labFileName}')" class="underline hover:text-rose-300 font-medium">${asset.labFileName}</a></div>`;
+            // เช็กขอบเขตเมือง (-118 ถึง 118) และชนตึกแบบลื่นไหล (Sliding Collision)
+            let blocked = false;
+            if (Math.abs(nextX) > 118 || Math.abs(nextZ) > 118) blocked = true;
+            for (const c of colliders) {
+                if (Math.hypot(nextX - c.x, nextZ - c.z) < c.r + 2.4) {
+                    blocked = true;
+                    break;
+                }
             }
-            if(asset.photoFileName) {
-                attachHtml += `<div class="text-emerald-400"><i class="fa-solid fa-image mr-1"></i> <a href="#" onclick="openPreviewModal('img', '${asset.photoFileName}')" class="underline hover:text-emerald-300 font-medium">${asset.photoFileName}</a></div>`;
-            }
-            attachBox.innerHTML = attachHtml || `<span class="text-slate-500 italic">ยังไม่มีการแนบไฟล์ในรอบนี้</span>`;
-        }
-
-        function autoCalculateRpn() {
-            const h2 = parseInt(document.getElementById('new-h2').value) || 0;
-            const c2h2 = parseInt(document.getElementById('new-c2h2').value) || 0;
-            let tdcg = h2 + c2h2 + 100;
-
-            let sField = document.getElementById('new-s');
-            let oField = document.getElementById('new-o');
-            let dField = document.getElementById('new-d');
-
-            if (tdcg > 1200 || c2h2 > 50) {
-                sField.value = 9; oField.value = 8; dField.value = 6;
-            } else if (tdcg > 400) {
-                sField.value = 7; oField.value = 5; dField.value = 4;
+            if (!blocked) {
+                carState.pos.x = nextX;
+                carState.pos.z = nextZ;
             } else {
-                sField.value = 4; oField.value = 2; dField.value = 2;
-            }
-            manualCalculateRpn();
-        }
-
-        function manualCalculateRpn() {
-            const s = parseInt(document.getElementById('new-s').value) || 0;
-            const o = parseInt(document.getElementById('new-o').value) || 0;
-            const d = parseInt(document.getElementById('new-d').value) || 0;
-            document.getElementById('new-rpn').value = s * o * d;
-        }
-
-        function submitNewTestData() {
-            const id = document.getElementById('analysis-device-select').value;
-            const asset = assetsData.find(a => a.id === id);
-            if (!asset) return;
-
-            asset.gases.h2 = parseInt(document.getElementById('new-h2').value) || 0;
-            asset.gases.ch4 = parseInt(document.getElementById('new-ch4').value) || 0;
-            asset.gases.c2h2 = parseInt(document.getElementById('new-c2h2').value) || 0;
-            asset.gases.c2h4 = parseInt(document.getElementById('new-c2h4').value) || 0;
-            asset.gases.c2h6 = parseInt(document.getElementById('new-c2h6').value) || 0;
-            asset.gases.co = parseInt(document.getElementById('new-co').value) || 0;
-            asset.gases.co2 = parseInt(document.getElementById('new-co2').value) || 0;
-
-            const fmeaItem = fmeaData.find(f => f.assetId === asset.id);
-            if(fmeaItem) {
-                fmeaItem.s = parseInt(document.getElementById('new-s').value) || 5;
-                fmeaItem.o = parseInt(document.getElementById('new-o').value) || 3;
-                fmeaItem.d = parseInt(document.getElementById('new-d').value) || 3;
+                carState.speed *= -0.3; // เด้งกลับนุ่มๆ ไม่ติดค้าง
             }
 
-            asset.rpn = parseInt(document.getElementById('new-rpn').value) || (fmeaItem.s * fmeaItem.o * fmeaItem.d);
+            // เช็กเนินกระโดด 3D
+            ramps.forEach(r => {
+                if (Math.hypot(carState.pos.x - r.x, carState.pos.z - r.z) < 5.5 && carState.isGrounded && Math.abs(carState.speed) > 0.25) {
+                    carState.vy = 0.48;
+                    carState.isGrounded = false;
+                    sfx.playJump();
+                }
+            });
 
-            if (asset.rpn >= 300) {
-                asset.status = "Critical"; asset.statusClass = "bg-rose-500/10 text-rose-400 border-rose-500/30"; asset.healthIndex = 68.5;
-            } else if (asset.rpn >= 100) {
-                asset.status = "Warning"; asset.statusClass = "bg-amber-500/10 text-amber-400 border-amber-500/30"; asset.healthIndex = 79.2;
+            // แรงโน้มถ่วงกระโดด
+            if (!carState.isGrounded) {
+                carState.pos.y += carState.vy;
+                carState.vy -= 0.024;
+                if (carState.pos.y <= 0) {
+                    carState.pos.y = 0;
+                    carState.vy = 0;
+                    carState.isGrounded = true;
+                }
+            }
+
+            // อัปเดตตำแหน่งและการหมุนของตัวรถ 3D
+            vehicleContainer.position.copy(carState.pos);
+            vehicleContainer.rotation.y = carState.rotY;
+
+            // หมุนล้อรถ & ใบพัดหมวก & แขนตักดิน
+            wheelList.forEach(w => { w.rotation.x += carState.speed * 0.65; });
+            if (currentHatIndex === 2) {
+                hats[2].children[1].rotation.y += 0.25;
+            }
+            if (carState.digAnim > 0 && diggerArmGroup) {
+                carState.digAnim -= 0.05;
+                diggerArmGroup.rotation.x = -Math.sin(carState.digAnim * Math.PI) * 0.75;
+            }
+
+            // ไฟไซเรนกะพริบสลับสี
+            const flash = Math.floor(clockTime * 8) % 2 === 0;
+            sirenMeshes.forEach(s => {
+                if (s.type === 'fire') s.mesh.material.color.setHex(flash ? 0x38bdf8 : 0xef4444);
+                else if (s.type === 'digger') s.mesh.material.color.setHex(flash ? 0xf97316 : 0xfacc15);
+                else s.mesh.material.color.setHex(flash ? 0xef4444 : 0x3b82f6);
+            });
+
+            // 9.3 ลูกศรนำทาง 3D เหนือรถชี้ไปยังจุดภารกิจ
+            const targetMissionPos = missionZones[currentVehicle].pos;
+            const dx = targetMissionPos.x - carState.pos.x;
+            const dz = targetMissionPos.z - carState.pos.z;
+            const worldAngleToTarget = Math.atan2(dx, dz);
+            guideArrowGroup.rotation.y = worldAngleToTarget - carState.rotY;
+            guideArrowGroup.position.y = 6.0 + Math.sin(clockTime * 5) * 0.35;
+
+            // แสดงแถบสถานะภารกิจด้านบนเมื่อเข้าใกล้จุดภารกิจ
+            const distToTarget = Math.hypot(dx, dz);
+            const banner = document.getElementById('mission-banner');
+            const mIcon = document.getElementById('mission-icon');
+            const mBar = document.getElementById('mission-progress-bar');
+
+            if (distToTarget < 25) {
+                banner.classList.remove('hidden');
+                if (currentVehicle === 'fire') {
+                    mIcon.textContent = '🔥';
+                    mBar.style.width = `${100 - missionZones.fire.hp}%`;
+                } else if (currentVehicle === 'digger') {
+                    mIcon.textContent = '🪨';
+                    mBar.style.width = `${((4 - missionZones.digger.rocksLeft) / 4) * 100}%`;
+                } else {
+                    mIcon.textContent = '🐱';
+                    mBar.style.width = `${((3 - missionZones.police.spotsLeft) / 3) * 100}%`;
+                }
             } else {
-                asset.status = "Normal"; asset.statusClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"; asset.healthIndex = 92.0;
+                banner.classList.add('hidden');
             }
 
-            const labFile = document.getElementById('lab-file-upload').files[0];
-            const photoFile = document.getElementById('damage-photo-upload').files[0];
-            if(labFile) asset.labFileName = labFile.name;
-            if(photoFile) asset.photoFileName = photoFile.name;
-
-            assetsData.sort((a, b) => b.rpn - a.rpn);
-            filteredData = [...assetsData];
-            renderTable();
-            renderFmeaTable();
-            onAnalysisDeviceChange();
-
-            alert(`บันทึกผลทดสอบรอบใหม่และอัปเดตคะแนน RPN ของอุปกรณ์ ${asset.id} สำเร็จ!`);
-        }
-
-        function openModal(id) {
-            const asset = assetsData.find(a => a.id === id);
-            if (!asset) return;
-
-            document.getElementById('modal-title').innerText = `ผลทดสอบเชิงลึก: ${asset.id} (${asset.type})`;
-            document.getElementById('modal-subtitle').innerText = `ตำแหน่ง: ${asset.location} | Health Index: ${asset.healthIndex}% | RPN: ${asset.rpn}`;
-
-            const linkedFmea = fmeaData.find(f => f.assetId === asset.id);
-            let tdcgVal = asset.gases.h2 + asset.gases.ch4 + asset.gases.c2h2 + asset.gases.c2h4 + asset.gases.c2h6 + asset.gases.co;
-            
-            let rationale = `อุปกรณ์ <b>${asset.id}</b> ถูกวิเคราะห์ความเสียหายผ่าน FMEA หัวข้อ <span class="text-industrial-400 font-bold">${linkedFmea.mode}</span> (คะแนน S=${linkedFmea.s}, O=${linkedFmea.o}, D=${linkedFmea.d} -> RPN = <b>${asset.rpn}</b>) ผลตรวจวัด DGA พบ TDCG รวม ${tdcgVal} ppm สถานะปัจจุบัน: <span class="${asset.status === 'Critical' ? 'text-rose-400' : asset.status === 'Warning' ? 'text-amber-400' : 'text-emerald-400'} font-bold">${asset.status}</span>`;
-            
-            if(asset.labFileName || asset.photoFileName) {
-                rationale += `<br><span class="text-industrial-300"><i class="fa-solid fa-paperclip mr-1"></i> ไฟล์แนบ: ${asset.labFileName || ''} ${asset.photoFileName || ''}</span>`;
+            // กดปุ่มแอ็กชันค้างไว้เพื่อฉีดน้ำต่อเนื่องสำหรับรถดับเพลิง
+            if (inputState.action && currentVehicle === 'fire') {
+                triggerVehicleAction();
             }
 
-            document.getElementById('modal-rationale-text').innerHTML = rationale;
-
-            const dgaTbody = document.getElementById('modal-dga-tbody');
-            dgaTbody.innerHTML = "";
-            const limits = { h2: 100, ch4: 120, c2h2: 35, c2h4: 50, c2h6: 65, co: 350, co2: 2500 };
-            Object.keys(asset.gases).forEach(gas => {
-                const val = asset.gases[gas];
-                const limit = limits[gas];
-                const isPass = val <= limit;
-                dgaTbody.innerHTML += `
-                    <tr class="hover:bg-slate-700/20">
-                        <td class="py-2 px-3 uppercase font-bold text-slate-300">${gas}</td>
-                        <td class="py-2 px-3 font-mono ${isPass ? 'text-slate-200' : 'text-rose-400 font-bold'}">${val} ppm</td>
-                        <td class="py-2 px-3 text-slate-400">สูงสุด ${limit} ppm</td>
-                        <td class="py-2 px-3"><span class="px-2 py-0.5 rounded text-[9px] font-semibold ${isPass ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">${isPass ? 'Normal' : 'Exceeded'}</span></td>
-                    </tr>
-                `;
+            // 9.4 เก็บดาวสีทองทั่วเมือง
+            goldStars.forEach(s => {
+                if (s.active) {
+                    s.mesh.rotation.y += 0.04;
+                    s.mesh.position.y = 2.2 + Math.sin(clockTime * 3 + s.mesh.position.x) * 0.35;
+                    if (carState.pos.distanceTo(s.mesh.position) < 4.5) {
+                        s.active = false;
+                        s.mesh.visible = false;
+                        s.respawnTimer = 600; // เกิดใหม่ใน 10 วินาที
+                        starCount++;
+                        updateStarUI();
+                        sfx.playStar();
+                        spawnConfettiBurst(s.mesh.position);
+                    }
+                } else {
+                    s.respawnTimer--;
+                    if (s.respawnTimer <= 0) {
+                        s.active = true;
+                        s.mesh.visible = true;
+                    }
+                }
             });
 
-            const elecTbody = document.getElementById('modal-elec-tbody');
-            elecTbody.innerHTML = "";
-            asset.electrical.forEach(test => {
-                elecTbody.innerHTML += `
-                    <tr class="hover:bg-slate-700/20">
-                        <td class="py-2 px-3 font-semibold text-slate-300">${test.name}</td>
-                        <td class="py-2 px-3 font-mono text-slate-200">${test.value}</td>
-                        <td class="py-2 px-3 text-slate-400">${test.criteria}</td>
-                        <td class="py-2 px-3"><span class="px-2 py-0.5 rounded text-[9px] font-semibold ${test.pass ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">${test.pass ? 'Pass' : 'Failed'}</span></td>
-                    </tr>
-                `;
+            // 9.5 ชนกรวยจราจรและบอลชายหาดเด้งดึ๋ง
+            knockableProps.forEach(p => {
+                const dist = Math.hypot(carState.pos.x - p.mesh.position.x, carState.pos.z - p.mesh.position.z);
+                if (dist < 3.4) {
+                    const pushAngle = Math.atan2(p.mesh.position.z - carState.pos.z, p.mesh.position.x - carState.pos.x);
+                    p.vx = Math.cos(pushAngle) * 0.65;
+                    p.vz = Math.sin(pushAngle) * 0.65;
+                    p.vy = 0.35;
+                    sfx.playTap();
+                }
+                p.mesh.position.x += p.vx;
+                p.mesh.position.z += p.vz;
+                p.mesh.position.y += p.vy;
+                p.vx *= 0.92;
+                p.vz *= 0.92;
+                if (p.mesh.position.y > p.baseY) {
+                    p.vy -= 0.025;
+                } else {
+                    p.mesh.position.y = p.baseY;
+                    p.vy = 0;
+                }
             });
 
-            document.getElementById('test-modal').classList.remove('hidden');
-        }
+            // 9.6 ซุ้มล้างรถฟองสบู่ 3D
+            washBrushes.forEach((b, i) => { b.rotation.y += (i === 0 ? 0.12 : -0.12); });
+            if (carState.pos.distanceTo(washStationPos) < 7.5) {
+                if (Math.random() < 0.35) {
+                    sfx.playBubble();
+                    const bPos = carState.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5));
+                    spawnParticle3D(bPos, new THREE.Vector3(0, 0.15, 0), 0xffffff, 0.55, 35);
+                }
+            }
 
-        function closeModal() {
-            document.getElementById('test-modal').classList.add('hidden');
-        }
-
-        function initDgaDropdown(selectId) {
-            const select = document.getElementById(selectId);
-            populateSortedDropdown(select);
-            if (selectId === 'dga-device-select') onDgaDeviceChange();
-        }
-
-        function onDgaDeviceChange() {
-            const selectedId = document.getElementById('dga-device-select').value;
-            const asset = assetsData.find(a => a.id === selectedId);
-            if (!asset) return;
-
-            const container = document.getElementById('gas-values-container');
-            container.innerHTML = "";
-            Object.keys(asset.gases).forEach(gas => {
-                container.innerHTML += `
-                    <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700">
-                        <div class="text-[9px] text-slate-400 uppercase font-bold">${gas}</div>
-                        <div class="text-sm sm:text-base font-mono font-bold text-white mt-1">${asset.gases[gas]} <span class="text-[9px] font-normal text-slate-400">ppm</span></div>
-                    </div>
-                `;
+            // 9.7 อัปเดตแอนิเมชันก้อนหินลอย & เปลวไฟ & ลูกแมวกระโดด
+            boulders3D.forEach(b => {
+                if (b.cleared && b.mesh.visible) {
+                    b.mesh.position.y += b.flyVy;
+                    b.mesh.rotation.x += 0.15;
+                    if (b.mesh.position.y > 35) b.mesh.visible = false;
+                }
             });
+            fireFlames3D.forEach((f, i) => {
+                if (f.visible) f.rotation.y = clockTime * 4 + i;
+            });
+            if (kittenGroup.visible) {
+                kittenGroup.position.y = Math.abs(Math.sin(clockTime * 6)) * 1.4;
+                kittenGroup.rotation.y += 0.05;
+            }
 
-            runDetailedDgaCalculations(asset.gases);
+            // อัปเดตอนุภาค 3D ทั้งหมด
+            for (let i = particles3D.length - 1; i >= 0; i--) {
+                const p = particles3D[i];
+                p.mesh.position.add(p.vel);
+                p.vel.y -= 0.015;
+                p.life--;
+                const scale = p.life / p.maxLife;
+                p.mesh.scale.set(scale, scale, scale);
+                if (p.life <= 0) {
+                    worldGroup.remove(p.mesh);
+                    particles3D.splice(i, 1);
+                }
+            }
+
+            // 9.8 กล้องติดตามรถแบบนุ่มนวล (Smooth Follow Camera)
+            let camDist = 19;
+            let camHeight = 11.5;
+            if (cameraMode === 1) { camDist = 12; camHeight = 7; }
+            else if (cameraMode === 2) { camDist = 28; camHeight = 24; }
+
+            const idealCamPos = new THREE.Vector3(
+                carState.pos.x - Math.sin(carState.rotY) * camDist,
+                carState.pos.y + camHeight,
+                carState.pos.z - Math.cos(carState.rotY) * camDist
+            );
+            camera.position.lerp(idealCamPos, 0.1);
+            const lookTarget = new THREE.Vector3(
+                carState.pos.x + Math.sin(carState.rotY) * 6,
+                carState.pos.y + 2.2,
+                carState.pos.z + Math.cos(carState.rotY) * 6
+            );
+            camera.lookAt(lookTarget);
+
+            renderer.render(scene, camera);
         }
 
-        function runDetailedDgaCalculations(g) {
-            let totalTri = g.ch4 + g.c2h4 + g.c2h2;
-            let p_ch4 = totalTri > 0 ? (g.ch4 / totalTri) : 0.33;
-            let p_c2h4 = totalTri > 0 ? (g.c2h4 / totalTri) : 0.33;
-            let p_c2h2 = totalTri > 0 ? (g.c2h2 / totalTri) : 0.34;
+        // ปรับขนาดจออัตโนมัติเมื่อหมุนหน้าจอหรือย่อขยาย
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-            document.getElementById('duval-p-ch4').innerText = (p_ch4 * 100).toFixed(1) + '%';
-            document.getElementById('duval-p-c2h4').innerText = (p_c2h4 * 100).toFixed(1) + '%';
-            document.getElementById('duval-p-c2h2').innerText = (p_c2h2 * 100).toFixed(1) + '%';
-
-            let duvalZone = "Zone S (Normal Thermal Behaviour - สภาพปกติ)";
-            if (p_c2h2 > 0.20) duvalZone = "Zone D1 (Discharge of High Energy / Arcing - เกิดประกายไฟหรืออาร์กแรงดันสูง)";
-            else if (p_c2h4 > 0.50) duvalZone = "Zone T3 (Thermal Fault > 700°C - ความร้อนสูงผิดปกติ เกิน 700°C)";
-            document.getElementById('res-duval-detail').innerText = duvalZone;
-            drawDuvalTriangle(p_ch4, p_c2h4, p_c2h2);
-
-            let r1 = g.c2h2 / g.ch4;
-            let r2 = g.ch4 / g.h2;
-            let r3 = g.c2h4 / g.c2h6;
-            let r4 = g.c2h6 / g.c2h2;
-
-            document.getElementById('rogers-r1').innerText = r1.toFixed(2);
-            document.getElementById('rogers-r2').innerText = r2.toFixed(2);
-            document.getElementById('rogers-r3').innerText = r3.toFixed(2);
-            document.getElementById('rogers-r4').innerText = r4.toFixed(2);
-
-            document.getElementById('res-rogers-detail').innerText = r2 > 1.0 ? "Partial Discharge (PD) - เกิดประจุบางส่วนในเนื้อฉนวน" : "Normal Operation - อัตราส่วน Rogers ปกติ";
-            document.getElementById('iec-i1').innerText = r1.toFixed(2);
-            document.getElementById('iec-i2').innerText = r3.toFixed(2);
-            document.getElementById('iec-i5').innerText = r2.toFixed(2);
-            document.getElementById('res-iec-detail').innerText = r1 > 1.0 ? "Code [1 0 0] - High Energy Arcing (เกิดการลัดวงจรเฉพาะจุด)" : "Code [0 0 0] - Normal Condition (สถานะปกติ)";
-
-            document.getElementById('doern-r1').innerText = r2.toFixed(2);
-            document.getElementById('doern-r2').innerText = (g.c2h2 / (g.c2h4 || 1)).toFixed(2);
-            document.getElementById('res-doern-detail').innerText = "IEEE Limits Checked: อัตราส่วนอยู่ในเกณฑ์มาตรฐานความปลอดภัย";
-
-            let maxGasVal = Math.max(g.h2, g.ch4, g.c2h2, g.c2h4, g.co);
-            let keyGasName = maxGasVal === g.c2h2 ? "Acetylene (C2H2)" : "Hydrogen (H2)";
-            document.getElementById('keygas-name').innerText = keyGasName;
-            document.getElementById('res-keygas-detail').innerText = maxGasVal === g.c2h2 ? "บ่งชี้ถึงการเกิดอาร์กหรือสปาร์ก (Arcing Fault)" : "ก๊าซไฮโดรเจนอยู่ในช่วงจำกัดปกติ (Normal Operation)";
-
-            let tdcg = g.h2 + g.ch4 + g.c2h2 + g.c2h4 + g.c2h6 + g.co;
-            document.getElementById('tdcg-total-val').innerText = tdcg.toLocaleString() + ' ppm';
-            let tdcgCond = tdcg > 1920 ? "Condition 4 (Excessive Deterioration - แนะนำปลดอุปกรณ์ซ่อมเร่งด่วน)" : tdcg > 720 ? "Condition 3 (Significant Gassing - เพิ่มความถี่เก็บตัวอย่างน้ำมัน)" : "Condition 1 (Normal Operation - ปลอดภัยตามเกณฑ์)";
-            document.getElementById('res-tdcg-detail').innerText = tdcgCond;
-        }
-
-        function drawDuvalTriangle(p_ch4, p_c2h4, p_c2h2) {
-            const canvas = document.getElementById('duvalCanvas');
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const A = { x: 110, y: 15 };
-            const B = { x: 205, y: 185 };
-            const C = { x: 15, y: 185 };
-
-            ctx.strokeStyle = '#f97316';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.lineTo(C.x, C.y);
-            ctx.closePath();
-            ctx.fillStyle = '#0f172a';
-            ctx.fill();
-            ctx.stroke();
-
-            let px = p_c2h4 * A.x + p_c2h2 * B.x + p_ch4 * C.x;
-            let py = p_c2h4 * A.y + p_c2h2 * B.y + p_ch4 * C.y;
-
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.arc(px, py, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        }
-
-        // Initial Load
-        renderTable();
-        switchTab('pm-schedule');
+        // เริ่มเกมเมื่อโหลดหน้าเสร็จสมบูรณ์
+        window.onload = function() {
+            selectVehicle('fire');
+            animate();
+        };
     </script>
 </body>
 </html>
